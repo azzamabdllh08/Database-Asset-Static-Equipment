@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ===============================================
-echo DATABASE ASSET STATIC EQUIPMENT - LOCAL SYNC
+echo DATABASE ASSET STATIC EQUIPMENT - ASSET REGISTER SYNC
 echo ===============================================
 echo.
 
@@ -14,15 +14,15 @@ if "%OneDrive%"=="" (
   exit /b 1
 )
 
-set "EXCEL=%OneDrive%\Zona 11\Asset Register & Verifikasi\Dashboard\Input RBI.xlsx"
+set "EXCEL=%OneDrive%\Zona 11\Asset Register & Verifikasi\Dashboard\Kertas Kerja Asset Register REV 2026-03-12 Combined.xlsx"
 
-echo Source Excel:
+echo Source Asset Register:
 echo %EXCEL%
 echo.
 
 if not exist "%EXCEL%" (
-  echo ERROR: Input RBI.xlsx tidak ditemukan pada path di atas.
-  echo Jika folder berbeda, edit variable EXCEL di file sync_static.bat.
+  echo ERROR: Kertas Kerja Asset Register tidak ditemukan pada path di atas.
+  echo Pastikan nama file dan folder OneDrive sesuai.
   pause
   exit /b 1
 )
@@ -35,9 +35,9 @@ if errorlevel 1 goto :error
 
 echo.
 echo ===============================================
-echo SYNC SELESAI
- echo Dashboard akan memakai data.js terbaru setelah GitHub Pages selesai deploy.
+echo SYNC ASSET REGISTER SELESAI
 echo ===============================================
+echo Dashboard akan memakai data.js terbaru setelah GitHub Pages selesai deploy.
 pause
 exit /b 0
 
