@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DATABASE ASSET STATIC EQUIPMENT</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">▣ <span id="brand">DATABASE ASSET STATIC EQUIPMENT</span></div>
+    <div class="subtitle">Asset Integrity & RBI</div>
+  </header>
+
+  <nav class="nav">
+    <button class="active" data-page="dashboard">Dashboard</button>
+    <button data-page="assets">Asset Register</button>
+    <button data-page="inspection">Inspection</button>
+    <button data-page="rbi">RBI</button>
+    <button data-page="reports">Report</button>
+  </nav>
+
+  <main>
+    <section id="dashboard" class="page active">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">STATIC EQUIPMENT DATABASE</p>
+          <h1>Database Asset Static Equipment</h1>
+          <p class="muted">Central database untuk asset register, inspection history, damage mechanism, corrosion dan RBI.</p>
+        </div>
+      </div>
+
+      <div class="cards">
+        <div class="card"><b id="totalAssets">0</b><span>Total Asset</span></div>
+        <div class="card"><b id="totalInspections">0</b><span>Inspection</span></div>
+        <div class="card"><b id="totalRbi">0</b><span>RBI Assessment</span></div>
+        <div class="card"><b id="highRisk">0</b><span>High Risk</span></div>
+      </div>
+
+      <div class="grid">
+        <div class="panel"><h3>Asset by Equipment Type</h3><div id="typeChart"></div></div>
+        <div class="panel"><h3>RBI Risk Summary</h3><div id="riskChart"></div></div>
+        <div class="panel wide"><h3>Recent Assets</h3><div id="recentAssets"></div></div>
+      </div>
+    </section>
+
+    <section id="assets" class="page">
+      <div class="panel">
+        <div class="section-head"><h2>Asset Register</h2><span id="assetCount" class="badge">0 asset</span></div>
+        <div class="filters">
+          <input id="assetSearch" placeholder="Search Tag No / Equipment Name / Service">
+          <select id="typeFilter"><option value="">All Equipment Type</option></select>
+          <select id="areaFilter"><option value="">All Area</option></select>
+        </div>
+        <div id="assetTable"></div>
+      </div>
+    </section>
+
+    <section id="inspection" class="page">
+      <div class="panel">
+        <div class="section-head"><h2>Inspection History</h2></div>
+        <div id="inspectionTable"></div>
+      </div>
+    </section>
+
+    <section id="rbi" class="page">
+      <div class="panel">
+        <div class="section-head"><h2>RBI Assessment</h2></div>
+        <div class="notice">Modul RBI akan menggunakan data asset, damage mechanism, thickness/corrosion dan consequence. Nilai RBI tidak akan dibuat secara asumsi.</div>
+        <div id="rbiTable"></div>
+      </div>
+    </section>
+
+    <section id="reports" class="page">
+      <div class="panel">
+        <h2>Report</h2>
+        <p class="muted">Folder Report akan dihubungkan ke OneDrive setelah struktur database dan link final ditetapkan.</p>
+        <a id="reportLink" class="report-button" href="#" target="_blank" rel="noopener">Open Report</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
