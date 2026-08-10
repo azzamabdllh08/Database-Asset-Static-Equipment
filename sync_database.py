@@ -5,13 +5,12 @@ import openpyxl
 
 INPUT = Path("Input RBI.xlsx")
 OUTPUT = Path("data.js")
+SOURCE_SHEET = "Detail"
 
 # Static Equipment database only.
-# No RBI / corrosion / risk calculation is performed here.
-# Values are copied from the source Excel workbook.
-
-SOURCE_SHEET = "Detail"
-STATIC_CATEGORY = "Static"
+# Source of truth: Input RBI.xlsx.
+# No RBI, corrosion-rate, PoF, CoF, or risk calculation is performed here.
+# Existing Excel values are copied only.
 
 ALIASES = {
     "tag": ["Tag Number", "Tag No", "Equipment No."],
@@ -22,7 +21,7 @@ ALIASES = {
     "subLocation": ["Sub Location"],
     "workArea": ["Wilayah Kerja"],
     "service": ["Deskripsi Peralatan", "Service"],
-    "classification": ["Klasifikasi Asset", "Klasifikasi Asset\n(2 Juni 2026)"],
+    "classification": ["Klasifikasi Asset", "Klasifikasi Asset (2 Juni 2026)"],
     "assetStatus": ["Asset Status"],
     "integrityStatus": ["Integrity Status", "Integrity status AZ11APS"],
     "pof": ["PoF"],
@@ -32,7 +31,7 @@ ALIASES = {
     "risk3AP": ["Risk 3AP"],
     "lastInspectionDate": ["Last Inspection Date", "Last Inspection Date (Titis)"],
     "inspectionDueDate": ["Inspection Due Date"],
-    "damageMechanism": ["Keterangan SUPPORTING Integrity\n(Bad & Poor Integrity)_Failure Mode/Damage Mechanism"],
+    "damageMechanism": ["Keterangan SUPPORTING Integrity (Bad & Poor Integrity)_Failure Mode/Damage Mechanism"],
     "remarks": ["Remarks/Kendala", "Catatan"],
     "followUp": ["Tindak Lanjut"],
     "pid": ["PID"],
@@ -51,8 +50,13 @@ def clean(v):
     return v
 
 
+def is_static(value):
+    v = norm(value)
+    return v in {"static", "static equipment", "static eqp"} or v.startswith("static ")
+
+
 def find_header_row(ws):
-    for r in range(1, min(ws.max_row, 20) + 1):
+    for r in range(1, min(ws.max_row, 30) + 1):
         vals = [ws.cell(r, c).value for c in range(1, ws.max_column + 1)]
         normalized = {norm(v) for v in vals if v is not None}
         if "tag number" in normalized and "equipment category" in normalized:
@@ -63,8 +67,9 @@ def find_header_row(ws):
 def find_column(headers, aliases):
     normalized = {norm(h): i for i, h in enumerate(headers)}
     for alias in aliases:
-        if norm(alias) in normalized:
-            return normalized[norm(alias)]
+        key = norm(alias)
+        if key in normalized:
+            return normalized[key]
     return None
 
 
@@ -87,13 +92,14 @@ if category_col is None:
 
 assets = []
 inspections = []
+seen_tags = set()
 
 for row in rows:
     if not any(v not in (None, "") for v in row):
         continue
 
     category = clean(row[category_col]) if category_col < len(row) else ""
-    if str(category).strip().lower() != STATIC_CATEGORY.lower():
+    if not is_static(category):
         continue
 
     def val(key):
@@ -104,9 +110,14 @@ for row in rows:
     if not tag:
         continue
 
+    tag_key = tag.upper()
+    if tag_key in seen_tags:
+        continue
+    seen_tags.add(tag_key)
+
     item = {k: val(k) for k in ALIASES}
-    # Dashboard uses 1AP as the default displayed risk.
-    # 1AP/2AP/3AP are retained separately and are never recalculated.
+    item["type"] = "Static"
+    # Dashboard display only; this is copied from Excel, not calculated.
     item["risk"] = item["risk1AP"]
     item["rbiStatus"] = item["classification"]
     assets.append(item)
@@ -121,9 +132,19 @@ for row in rows:
             "remarks": item["remarks"],
         })
 
+assets.sort(key=lambda x: str(x.get("tag", "")))
+
+meta = {
+    "generatedFrom": INPUT.name,
+    "sourceSheet": SOURCE_SHEET,
+    "equipmentCategoryFilter": "Static",
+    "assetCount": len(assets),
+    "inspectionCount": len(inspections),
+}
+
 OUTPUT.write_text(
-    "// Generated from Input RBI.xlsx / Detail / Equipment Category = Static\n"
-    "// No RBI, risk, or corrosion calculations are performed.\n"
+    "// Auto-generated from Input RBI.xlsx. Do not edit manually.\n"
+    "const ASSET_DATABASE_META = " + json.dumps(meta, ensure_ascii=False, separators=(",", ":")) + ";\n"
     "const ASSETS = " + json.dumps(assets, ensure_ascii=False, separators=(",", ":"), default=str) + ";\n"
     "const INSPECTIONS = " + json.dumps(inspections, ensure_ascii=False, separators=(",", ":"), default=str) + ";\n",
     encoding="utf-8"
@@ -132,4 +153,4 @@ OUTPUT.write_text(
 print(f"Generated {OUTPUT}: {len(assets):,} Static assets")
 print(f"Generated {len(inspections):,} inspection records")
 print("Filter: Equipment Category = Static")
-print("RBI/Risk/Corrosion calculations are NOT performed; values are copied from Excel.")
+print("RBI/risk/corrosion calculations: NONE")
