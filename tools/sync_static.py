@@ -12,6 +12,7 @@ from openpyxl import load_workbook
 
 ALIASES = {
     "category": ["Equipment Category", "EquipmentCategory", "Category"],
+    "wilayahKerja": ["Wilayah Kerja", "Wilayah", "Working Area", "Work Area"],
     "tag": ["Tag No", "Tag No.", "Tag Number", "Equipment Tag", "Tag", "Equipment No"],
     "name": ["Equipment Name", "Equipment", "Description", "Equipment Description", "Name"],
     "type": ["Equipment Type", "Type", "Equipment Type Description"],
@@ -75,6 +76,7 @@ def build_records(rows, headers):
             for key, aliases in ALIASES.items()
             if key not in {"category", "date", "method", "finding", "remarks"}
         }
+        asset["wilayahKerja"] = asset.get("wilayahKerja") or "Unknown"
         asset["equipmentCategory"] = "Static"
         assets.append(asset)
 
@@ -105,15 +107,8 @@ def find_header_in_sheet(ws):
 
 
 def read_excel(path: Path):
-    """Read the main Asset Register table.
-
-    Prefer the Detail worksheet because Rekap is a summary sheet and can contain
-    misleading Equipment Category values. Within Detail, find the real header
-    row by scanning the first 100 rows.
-    """
     wb = load_workbook(path, read_only=True, data_only=True)
 
-    # 1) Prefer Detail explicitly.
     preferred = next((ws for ws in wb.worksheets if clean_header(ws.title) == "detail"), None)
     if preferred is not None:
         row_number, headers = find_header_in_sheet(preferred)
@@ -121,7 +116,6 @@ def read_excel(path: Path):
             remaining = preferred.iter_rows(min_row=row_number + 1, values_only=True)
             return list(remaining), headers, preferred.title
 
-    # 2) Fallback: find a worksheet containing Equipment Category.
     category_aliases = {clean_header(a) for a in ALIASES["category"]}
     for ws in wb.worksheets:
         row_number, headers = find_header_in_sheet(ws)
@@ -137,23 +131,98 @@ def read_excel(path: Path):
     )
 
 
+def slugify(value):
+    value = str(value or "Unknown").strip().lower()
+    value = re.sub(r"[^a-z0-9]+", "-", value).strip("-")
+    return value or "unknown"
+
+
+def count_by(records, key):
+    result = {}
+    for item in records:
+        value = str(item.get(key) or "Unknown")
+        result[value] = result.get(value, 0) + 1
+    return dict(sorted(result.items(), key=lambda kv: (-kv[1], kv[0].lower())))
+
+
 def write_database(repo_root: Path, assets, inspections):
+    """Write a small manifest and lazy-loaded regional JSON files.
+
+    data.js is retained as a backward-compatible artifact, but the dashboard no
+    longer loads it on startup. The browser first loads only manifest.json, then
+    loads one region file when the user opens Asset Register/selects a region.
+    """
+    data_root = repo_root / "data"
+    regions_root = data_root / "regions"
+    regions_root.mkdir(parents=True, exist_ok=True)
+
+    # Remove stale regional files from an earlier sync.
+    for old in regions_root.glob("*.json"):
+        old.unlink()
+
+    region_groups = {}
+    for asset in assets:
+        region = str(asset.get("wilayahKerja") or "Unknown").strip() or "Unknown"
+        region_groups.setdefault(region, []).append(asset)
+
+    region_entries = []
+    for region, records in sorted(region_groups.items(), key=lambda kv: kv[0].lower()):
+        slug = slugify(region)
+        payload = {
+            "wilayahKerja": region,
+            "count": len(records),
+            "locations": count_by(records, "area"),
+            "assets": records,
+        }
+        (regions_root / f"{slug}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        region_entries.append({
+            "name": region,
+            "slug": slug,
+            "count": len(records),
+            "locations": len(count_by(records, "area")),
+        })
+
+    # Compact dashboard-only data. No full asset/inspection arrays here.
+    recent = assets[:8]
+    risk_values = {"4A","4B","4C","4D","4E","5A","5B","5C","5D","5E"}
+    manifest = {
+        "generatedAt": datetime.now().isoformat(timespec="seconds"),
+        "totalAssets": len(assets),
+        "totalInspections": len(inspections),
+        "totalRbi": sum(1 for x in assets if x.get("risk")),
+        "highRisk": sum(1 for x in assets if str(x.get("risk") or "") in risk_values),
+        "typeCounts": count_by(assets, "type"),
+        "riskCounts": count_by(assets, "risk"),
+        "regions": region_entries,
+        "recentAssets": recent,
+    }
+    data_root.mkdir(parents=True, exist_ok=True)
+    (data_root / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    (data_root / "inspections.json").write_text(
+        json.dumps(inspections, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    # Keep the legacy data.js for compatibility with any old local copy.
     output = repo_root / "data.js"
     payload_assets = json.dumps(assets, ensure_ascii=False, separators=(",", ":"))
     payload_inspections = json.dumps(inspections, ensure_ascii=False, separators=(",", ":"))
-    content = (
-        "// AUTO-GENERATED. DO NOT EDIT MANUALLY.\n"
-        "// Source: Asset Register Excel | Filter: Equipment Category = Static\n"
-        "// This script performs NO RBI calculation.\n\n"
-        f"const ASSETS = {payload_assets};\n\n"
-        f"const INSPECTIONS = {payload_inspections};\n"
+    output.write_text(
+        "// AUTO-GENERATED. Legacy compatibility copy; dashboard does not load this file on startup.\n"
+        f"const ASSETS = {payload_assets};\n\nconst INSPECTIONS = {payload_inspections};\n",
+        encoding="utf-8",
     )
-    output.write_text(content, encoding="utf-8")
     return output
 
 
 def git_push(repo_root: Path, commit_message: str):
-    subprocess.run(["git", "-C", str(repo_root), "add", "data.js"], check=True)
+    subprocess.run(["git", "-C", str(repo_root), "add", "data.js", "data"], check=True)
     status = subprocess.run(
         ["git", "-C", str(repo_root), "status", "--porcelain"],
         check=True,
@@ -171,7 +240,7 @@ def main():
     parser = argparse.ArgumentParser(description="Sync Static Equipment dari Asset Register lokal OneDrive")
     parser.add_argument("excel", help="Path lengkap ke Asset Register Excel")
     parser.add_argument("--repo", default=".", help="Folder root repository GitHub")
-    parser.add_argument("--push", action="store_true", help="Commit dan push data.js ke branch main")
+    parser.add_argument("--push", action="store_true", help="Commit dan push database ke branch main")
     args = parser.parse_args()
 
     excel = Path(args.excel).expanduser().resolve()
@@ -188,10 +257,11 @@ def main():
     print(f"Worksheet: {sheet}")
     print(f"Static assets: {len(assets):,}")
     print(f"Inspection records: {len(inspections):,}")
+    print(f"Wilayah Kerja: {len(set(str(x.get('wilayahKerja') or 'Unknown') for x in assets))}")
     print(f"Database: {output}")
 
     if args.push:
-        git_push(repo, "Sync Static Equipment database from Asset Register")
+        git_push(repo, "Sync Static Equipment database by Wilayah Kerja")
         print("Push ke GitHub selesai.")
 
 
