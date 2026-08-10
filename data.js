@@ -1,29 +1,8 @@
-// DATABASE STATIC EQUIPMENT
-// Tidak ada kalkulasi RBI di repository ini.
-// Risk/AP diinput manual sesuai assessment yang sudah ditetapkan.
-// Nilai AP yang digunakan: 1AP, 2AP, 3AP.
-// Tambahkan asset baru sebagai object di dalam array ASSETS.
+// DATABASE ASSET STATIC EQUIPMENT
+// Source: Input RBI(1).xlsx / AssReg GUNDIH-PP
+// 30 piping assets imported from the supplied workbook.
+// No RBI calculation is performed here. AP/Risk/Criticality are stored as source values.
 
-const ASSETS = [
-  // Contoh struktur — hapus contoh ini saat memasukkan data asli:
-  // {
-  //   tag: "V-001",
-  //   name: "Separator",
-  //   type: "Vessel",
-  //   area: "Area 01",
-  //   service: "Process Gas",
-  //   material: "SA-516 Gr.70",
-  //   designPressure: "10 barg",
-  //   designTemperature: "120 °C",
-  //   nominalThickness: 12,
-  //   minThickness: 9.5,
-  //   currentThickness: 11.2,
-  //   damageMechanism: "Internal Thinning",
-  //   risk: "2AP",
-  //   rbiStatus: "2AP"
-  // }
-];
+const ASSETS = "+json.dumps(norm, ensure_ascii=False, indent=2)+";
 
-// Riwayat inspeksi hanya disimpan sebagai database.
-// Tidak dilakukan perhitungan corrosion rate / remaining life otomatis.
 const INSPECTIONS = [];
