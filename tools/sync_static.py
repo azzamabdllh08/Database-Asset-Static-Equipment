@@ -32,7 +32,7 @@ ALIASES = {
     "date": ["Inspection Date", "Last Inspection Date", "InspectionDate", "Date"],
     "method": ["Inspection Method", "Method", "Inspection Type"],
     "finding": ["Finding", "Findings", "Inspection Finding"],
-    "remarks": ["Remarks", "Remark", "Inspection Remarks", "Notes"],
+    "remarks": ["Tindak Lanjut", "Tindak lanjut", "Follow Up", "Follow-up", "Remarks", "Remark", "Inspection Remarks", "Notes"],
 }
 
 
