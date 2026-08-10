@@ -57,12 +57,7 @@ def serialise(value):
 
 def build_records(rows, headers):
     header_map = {clean_header(h): i for i, h in enumerate(headers) if h is not None}
-    category = None
-    for alias in ALIASES["category"]:
-        if clean_header(alias) in header_map:
-            category = clean_header(alias)
-            break
-    if category is None:
+    if not any(clean_header(a) in header_map for a in ALIASES["category"]):
         raise RuntimeError(
             "Kolom Equipment Category tidak ditemukan. Header yang tersedia: "
             + ", ".join(str(h) for h in headers if h is not None)
@@ -80,7 +75,6 @@ def build_records(rows, headers):
             for key, aliases in ALIASES.items()
             if key not in {"category", "date", "method", "finding", "remarks"}
         }
-        # Keep the original category explicitly for traceability.
         asset["equipmentCategory"] = "Static"
         assets.append(asset)
 
@@ -101,18 +95,33 @@ def build_records(rows, headers):
 
 
 def read_excel(path: Path):
+    """Find the real header row instead of assuming row 1 is the header.
+
+    Asset Register workbooks commonly have title/information rows above the
+    table. We scan the first 100 rows of every worksheet for Equipment Category.
+    """
     wb = load_workbook(path, read_only=True, data_only=True)
-    # Prefer a worksheet containing the Equipment Category header.
+    category_aliases = {clean_header(a) for a in ALIASES["category"]}
+
     for ws in wb.worksheets:
-        iterator = ws.iter_rows(values_only=True)
-        try:
-            headers = next(iterator)
-        except StopIteration:
-            continue
-        header_keys = {clean_header(h) for h in headers if h is not None}
-        if any(clean_header(a) in header_keys for a in ALIASES["category"]):
-            return list(iterator), list(headers), ws.title
-    raise RuntimeError("Tidak ditemukan worksheet yang memiliki kolom Equipment Category.")
+        rows = ws.iter_rows(values_only=True)
+        buffered = []
+        for row_number, row in enumerate(rows, start=1):
+            row_values = list(row)
+            buffered.append(row_values)
+            if row_number > 100:
+                break
+
+            header_keys = {clean_header(v) for v in row_values if v is not None}
+            if category_aliases.intersection(header_keys):
+                # The row containing Equipment Category is the actual table header.
+                remaining = ws.iter_rows(min_row=row_number + 1, values_only=True)
+                return list(remaining), row_values, ws.title
+
+    raise RuntimeError(
+        "Tidak ditemukan worksheet/baris header yang memiliki kolom Equipment Category "
+        "dalam 100 baris pertama."
+    )
 
 
 def write_database(repo_root: Path, assets, inspections):
@@ -121,8 +130,8 @@ def write_database(repo_root: Path, assets, inspections):
     payload_inspections = json.dumps(inspections, ensure_ascii=False, separators=(",", ":"))
     content = (
         "// AUTO-GENERATED. DO NOT EDIT MANUALLY.\n"
-        "// Source: Input RBI.xlsx | Filter: Equipment Category = Static\n"
-        "// RBI values are stored as supplied; this script performs NO RBI calculation.\n\n"
+        "// Source: Asset Register Excel | Filter: Equipment Category = Static\n"
+        "// This script performs NO RBI calculation.\n\n"
         f"const ASSETS = {payload_assets};\n\n"
         f"const INSPECTIONS = {payload_inspections};\n"
     )
@@ -146,8 +155,8 @@ def git_push(repo_root: Path, commit_message: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Sync Static Equipment dari Input RBI.xlsx lokal OneDrive")
-    parser.add_argument("excel", help="Path lengkap ke Input RBI.xlsx")
+    parser = argparse.ArgumentParser(description="Sync Static Equipment dari Asset Register lokal OneDrive")
+    parser.add_argument("excel", help="Path lengkap ke Asset Register Excel")
     parser.add_argument("--repo", default=".", help="Folder root repository GitHub")
     parser.add_argument("--push", action="store_true", help="Commit dan push data.js ke branch main")
     args = parser.parse_args()
@@ -169,7 +178,7 @@ def main():
     print(f"Database: {output}")
 
     if args.push:
-        git_push(repo, "Sync Static Equipment database from OneDrive Excel")
+        git_push(repo, "Sync Static Equipment database from Asset Register")
         print("Push ke GitHub selesai.")
 
 
