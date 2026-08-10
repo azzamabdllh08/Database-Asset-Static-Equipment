@@ -36,7 +36,7 @@ jobs:
           test -n "$TENANT_ID" || { echo "Missing AZURE_TENANT_ID"; exit 1; }
           test -n "$CLIENT_SECRET" || { echo "Missing AZURE_CLIENT_SECRET"; exit 1; }
 
-          RESPONSE=$(curl -fsS -X POST \
+          HTTP_CODE=$(curl -sS -o token-response.json -w '%{http_code}' -X POST \
             "https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "client_id=${CLIENT_ID}" \
@@ -44,7 +44,21 @@ jobs:
             --data-urlencode "scope=https://graph.microsoft.com/.default" \
             --data-urlencode "grant_type=client_credentials")
 
-          TOKEN=$(python -c 'import json,sys; print(json.load(sys.stdin).get("access_token", ""))' <<< "$RESPONSE")
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Microsoft Entra token request failed (HTTP $HTTP_CODE)."
+            python - <<'PY'
+          import json
+          try:
+              data = json.load(open('token-response.json', encoding='utf-8'))
+              print('error:', data.get('error', 'unknown'))
+              print('error_description:', data.get('error_description', 'No description returned'))
+          except Exception:
+              print('Unable to parse token response.')
+          PY
+            exit 1
+          fi
+
+          TOKEN=$(python -c 'import json,sys; print(json.load(sys.stdin).get("access_token", ""))' < token-response.json)
           test -n "$TOKEN" || { echo "Microsoft Graph token was not returned."; exit 1; }
           echo "TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
