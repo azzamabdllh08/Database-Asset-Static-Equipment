@@ -1,58 +1,143 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const assets = Array.isArray(window.ASSETS) ? window.ASSETS : ASSETS;
-  const inspections = Array.isArray(window.INSPECTIONS) ? window.INSPECTIONS : INSPECTIONS;
-  const PAGE_SIZE = 50;
+let MANIFEST = null;
+let currentRegion = null;
+let currentRegionAssets = [];
+let inspectionData = null;
+let rbiRendered = false;
+const PAGE_SIZE = 50;
 
-  document.getElementById('brand').textContent = CONFIG.brand;
+const $ = id => document.getElementById(id);
+
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('data/manifest.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`manifest.json HTTP ${res.status}`);
+    MANIFEST = await res.json();
+    initApp();
+  } catch (err) {
+    document.querySelector('main').insertAdjacentHTML('afterbegin', `<div class="panel notice">Database belum tersedia. Jalankan sync_static.py terlebih dahulu. <small>${esc(err.message)}</small></div>`);
+    console.error(err);
+  }
+});
+
+function initApp() {
+  $('brand').textContent = CONFIG.brand;
   document.title = CONFIG.title;
-  const reportLink = document.getElementById('reportLink');
-  if (CONFIG.reportUrl) reportLink.href = CONFIG.reportUrl;
+  if (CONFIG.reportUrl) $('reportLink').href = CONFIG.reportUrl;
+
+  $('totalAssets').textContent = Number(MANIFEST.totalAssets || 0).toLocaleString('id-ID');
+  $('totalInspections').textContent = Number(MANIFEST.totalInspections || 0).toLocaleString('id-ID');
+  $('totalRbi').textContent = Number(MANIFEST.totalRbi || 0).toLocaleString('id-ID');
+  $('highRisk').textContent = Number(MANIFEST.highRisk || 0).toLocaleString('id-ID');
+
+  renderBars('regionChart', Object.fromEntries((MANIFEST.regions || []).map(r => [r.name, r.count])));
+  renderBars('typeChart', MANIFEST.typeCounts || {});
+  renderBars('riskChart', MANIFEST.riskCounts || {});
+  renderRecent(MANIFEST.recentAssets || []);
+  fillRegions();
 
   const pages = document.querySelectorAll('.page');
   const navButtons = document.querySelectorAll('.nav button');
-  let rbiRendered = false;
+  navButtons.forEach(btn => btn.addEventListener('click', async () => {
+    navButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pages.forEach(p => p.classList.toggle('active', p.id === btn.dataset.page));
 
-  navButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      navButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      pages.forEach(p => p.classList.toggle('active', p.id === btn.dataset.page));
-      if (btn.dataset.page === 'assets') renderAssetTable(assets);
-      if (btn.dataset.page === 'inspection') renderInspectionByYear(inspections);
-      if (btn.dataset.page === 'rbi' && !rbiRendered) { renderRbiTable(assets); rbiRendered = true; }
-    });
+    if (btn.dataset.page === 'assets') {
+      if (!currentRegion) $('assetTable').innerHTML = '<div class="empty">Pilih Wilayah Kerja untuk memuat asset.</div>';
+    }
+    if (btn.dataset.page === 'inspection') await loadInspections();
+    if (btn.dataset.page === 'rbi' && !rbiRendered) {
+      if (!currentRegion) {
+        $('rbiTable').innerHTML = '<div class="empty">Pilih Wilayah Kerja di Asset Register terlebih dahulu.</div>';
+      } else {
+        renderRbiTable(currentRegionAssets);
+        rbiRendered = true;
+      }
+    }
+  }));
+
+  $('regionFilter').addEventListener('change', async e => {
+    await selectRegion(e.target.value);
   });
+  $('locationFilter').addEventListener('change', filterCurrentRegion);
+  $('typeFilter').addEventListener('change', filterCurrentRegion);
+  $('assetSearch').addEventListener('input', filterCurrentRegion);
+  $('inspectionYear').addEventListener('change', () => renderInspectionByYear(inspectionData || [], $('inspectionYear').value));
+}
 
-  const by = key => assets.reduce((m, x) => { const v = x[key] || 'Unknown'; m[v] = (m[v] || 0) + 1; return m; }, {});
-  document.getElementById('totalAssets').textContent = assets.length.toLocaleString('id-ID');
-  document.getElementById('totalInspections').textContent = inspections.length.toLocaleString('id-ID');
-  document.getElementById('totalRbi').textContent = assets.filter(x => x.risk).length.toLocaleString('id-ID');
-  document.getElementById('highRisk').textContent = assets.filter(x => ['4A','4B','4C','4D','4E','5A','5B','5C','5D','5E'].includes(String(x.risk))).length.toLocaleString('id-ID');
-  renderBars('typeChart', by('type'));
-  renderBars('riskChart', by('risk'));
-  renderRecent(assets.slice(0, 8));
-  fillFilters(assets);
+function fillRegions() {
+  const select = $('regionFilter');
+  select.innerHTML = '<option value="">Pilih Wilayah Kerja</option>' +
+    (MANIFEST.regions || []).map(r => `<option value="${escAttr(r.slug)}">${esc(r.name)} (${Number(r.count).toLocaleString('id-ID')})</option>`).join('');
+}
 
-  const search = document.getElementById('assetSearch');
-  const typeFilter = document.getElementById('typeFilter');
-  const areaFilter = document.getElementById('areaFilter');
-  [search, typeFilter, areaFilter].forEach(el => el.addEventListener('input', filterAssets));
-  const inspectionYear = document.getElementById('inspectionYear');
-  inspectionYear.addEventListener('change', () => renderInspectionByYear(inspections, inspectionYear.value));
+async function selectRegion(slug) {
+  currentRegion = null;
+  currentRegionAssets = [];
+  rbiRendered = false;
+  const location = $('locationFilter');
+  const type = $('typeFilter');
+  const search = $('assetSearch');
 
-  function filterAssets() {
-    const q = search.value.toLowerCase(), type = typeFilter.value, area = areaFilter.value;
-    renderAssetTable(assets.filter(x => {
-      const hay = `${x.tag} ${x.name} ${x.service}`.toLowerCase();
-      return (!q || hay.includes(q)) && (!type || x.type === type) && (!area || x.area === area);
-    }));
+  location.disabled = true;
+  type.disabled = true;
+  search.disabled = true;
+  location.innerHTML = '<option value="">Loading Location...</option>';
+  type.innerHTML = '<option value="">All Equipment Type</option>';
+
+  if (!slug) {
+    $('assetCount').textContent = 'Pilih Wilayah Kerja';
+    $('assetTable').innerHTML = '<div class="empty">Pilih Wilayah Kerja untuk memuat asset.</div>';
+    return;
   }
 
-  function fillFilters(list) {
-    [...new Set(list.map(x => x.type).filter(Boolean))].sort().forEach(v => typeFilter.insertAdjacentHTML('beforeend', `<option>${esc(v)}</option>`));
-    [...new Set(list.map(x => x.area).filter(Boolean))].sort().forEach(v => areaFilter.insertAdjacentHTML('beforeend', `<option>${esc(v)}</option>`));
+  $('assetTable').innerHTML = '<div class="empty">Memuat data wilayah...</div>';
+  const res = await fetch(`data/regions/${encodeURIComponent(slug)}.json`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Region data HTTP ${res.status}`);
+  const data = await res.json();
+  currentRegion = data.wilayahKerja;
+  currentRegionAssets = Array.isArray(data.assets) ? data.assets : [];
+
+  const locations = [...new Set(currentRegionAssets.map(x => x.area).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
+  const types = [...new Set(currentRegionAssets.map(x => x.type).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
+  location.innerHTML = '<option value="">All Location</option>' + locations.map(v => `<option value="${escAttr(v)}">${esc(v)}</option>`).join('');
+  type.innerHTML = '<option value="">All Equipment Type</option>' + types.map(v => `<option value="${escAttr(v)}">${esc(v)}</option>`).join('');
+  location.disabled = false;
+  type.disabled = false;
+  search.disabled = false;
+  search.value = '';
+
+  $('assetCount').textContent = `${currentRegionAssets.length.toLocaleString('id-ID')} asset — ${currentRegion}`;
+  renderAssetTable(currentRegionAssets, 1);
+  if (document.getElementById('rbi').classList.contains('active')) {
+    renderRbiTable(currentRegionAssets);
+    rbiRendered = true;
   }
-});
+}
+
+function filterCurrentRegion() {
+  if (!currentRegion) return;
+  const q = $('assetSearch').value.trim().toLowerCase();
+  const location = $('locationFilter').value;
+  const type = $('typeFilter').value;
+  const filtered = currentRegionAssets.filter(x => {
+    const hay = `${x.tag} ${x.name} ${x.service} ${x.area} ${x.type}`.toLowerCase();
+    return (!q || hay.includes(q)) && (!location || x.area === location) && (!type || x.type === type);
+  });
+  renderAssetTable(filtered, 1);
+}
+
+async function loadInspections() {
+  if (inspectionData) {
+    renderInspectionByYear(inspectionData);
+    return;
+  }
+  $('inspectionTable').innerHTML = '<div class="empty">Memuat inspection...</div>';
+  const res = await fetch('data/inspections.json', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`inspections.json HTTP ${res.status}`);
+  inspectionData = await res.json();
+  renderInspectionByYear(inspectionData);
+}
 
 function inspectionYearValue(item) {
   const raw = item?.date ?? item?.inspectionDate ?? item?.inspection_date ?? item?.year ?? '';
@@ -61,9 +146,9 @@ function inspectionYearValue(item) {
 }
 
 function renderInspectionByYear(list, selectedYear = '') {
-  const summary = document.getElementById('inspectionYearSummary');
-  const table = document.getElementById('inspectionTable');
-  const yearSelect = document.getElementById('inspectionYear');
+  const summary = $('inspectionYearSummary');
+  const table = $('inspectionTable');
+  const yearSelect = $('inspectionYear');
   const grouped = list.reduce((m, item) => { const year = inspectionYearValue(item); (m[year] ||= []).push(item); return m; }, {});
   const years = Object.keys(grouped).filter(y => y !== 'Unknown').sort((a,b) => Number(b) - Number(a));
   const current = yearSelect.value;
@@ -80,13 +165,33 @@ function renderInspectionByYear(list, selectedYear = '') {
 }
 
 function renderInspectionPage(filtered, selectedYear, page) {
-  const table = document.getElementById('inspectionTable');
-  const pageSize = 50, totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const table = $('inspectionTable');
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   page = Math.min(Math.max(1, page), totalPages);
-  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada inspection pada tahun yang dipilih.</div>'; return; }
-  table.innerHTML = `<div class="report-heading"><h3>Inspection Report ${selectedYear || 'All Years'}</h3><span class="badge">${filtered.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.date || x.inspectionDate || '-')}</td><td>${esc(x.method || '-')}</td><td>${esc(x.finding || '-')}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page, totalPages)}`;
+  table.innerHTML = `<div class="report-heading"><h3>Inspection Report ${selectedYear || 'All Years'}</h3><span class="badge">${filtered.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.date || '-')}</td><td>${esc(x.method || '-')}</td><td>${esc(x.finding || '-')}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page, totalPages)}`;
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderInspectionPage(filtered, selectedYear, Number(btn.dataset.page))));
+}
+
+function renderAssetTable(list, page = 1) {
+  const table = $('assetTable');
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  page = Math.min(Math.max(1, page), totalPages);
+  const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  $('assetCount').textContent = `${list.length.toLocaleString('id-ID')} asset — ${currentRegion || ''}`;
+  if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada asset sesuai filter.</div>'; return; }
+  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Equipment</th><th>Type</th><th>Location</th><th>Service</th><th>Material</th><th>Risk</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name)}</td><td>${esc(x.type)}</td><td>${esc(x.area)}</td><td>${esc(x.service)}</td><td>${esc(x.material)}</td><td><span class="risk">${esc(x.risk || '-')}</span></td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderAssetTable(list, Number(btn.dataset.page))));
+}
+
+function renderRbiTable(list, page = 1) {
+  const table = $('rbiTable');
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  page = Math.min(Math.max(1, page), totalPages);
+  const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  table.innerHTML = `<div class="report-heading"><h3>RBI — ${esc(currentRegion || '')}</h3><span class="badge">${list.length.toLocaleString('id-ID')} asset</span></div><table><thead><tr><th>Tag No.</th><th>Damage Mechanism</th><th>Corrosion Rate</th><th>Current Thickness</th><th>Risk</th><th>RBI Status</th></tr></thead><tbody>${visible.map(x => `<tr><td>${esc(x.tag)}</td><td>${esc(x.damageMechanism || '-')}</td><td>${x.corrosionRate ?? '-'} mm/y</td><td>${x.currentThickness ?? '-'} mm</td><td><span class="risk">${esc(x.risk || '-')}</span></td><td>${esc(x.rbiStatus || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderRbiTable(list, Number(btn.dataset.page))));
 }
 
 function paginationHtml(page, totalPages) {
@@ -95,29 +200,15 @@ function paginationHtml(page, totalPages) {
 }
 
 function renderBars(id, data) {
-  const el = document.getElementById(id), max = Math.max(1, ...Object.values(data));
-  el.innerHTML = Object.entries(data).map(([k,v]) => `<div class="bar-row"><span>${esc(k)}</span><div class="bar"><i style="width:${(v/max)*100}%"></i></div><b>${v}</b></div>`).join('') || '<p class="muted">No data</p>';
+  const el = $(id);
+  const entries = Object.entries(data || {});
+  const max = Math.max(1, ...entries.map(([,v]) => Number(v) || 0));
+  el.innerHTML = entries.length ? entries.map(([k,v]) => `<div class="bar-row"><span>${esc(k)}</span><div class="bar"><i style="width:${((Number(v)||0)/max)*100}%"></i></div><b>${Number(v).toLocaleString('id-ID')}</b></div>`).join('') : '<p class="muted">No data</p>';
 }
 
 function renderRecent(list) {
-  document.getElementById('recentAssets').innerHTML = list.length ? `<div class="mini-table">${list.map(x => `<div><b>${esc(x.tag)}</b><span>${esc(x.name)}</span><em>${esc(x.risk || '-')}</em></div>`).join('')}</div>` : '<p class="muted">No asset data.</p>';
-}
-
-function renderAssetTable(list, page = 1) {
-  const table = document.getElementById('assetTable'), pageSize = 50, totalPages = Math.max(1, Math.ceil(list.length / pageSize));
-  page = Math.min(Math.max(1, page), totalPages);
-  const visible = list.slice((page - 1) * pageSize, page * pageSize);
-  document.getElementById('assetCount').textContent = `${list.length.toLocaleString('id-ID')} asset`;
-  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Equipment</th><th>Type</th><th>Area</th><th>Service</th><th>Material</th><th>Risk</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name)}</td><td>${esc(x.type)}</td><td>${esc(x.area)}</td><td>${esc(x.service)}</td><td>${esc(x.material)}</td><td><span class="risk">${esc(x.risk || '-')}</span></td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
-  table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderAssetTable(list, Number(btn.dataset.page))));
-}
-
-function renderRbiTable(list, page = 1) {
-  const table = document.getElementById('rbiTable'), pageSize = 50, totalPages = Math.max(1, Math.ceil(list.length / pageSize));
-  page = Math.min(Math.max(1, page), totalPages);
-  const visible = list.slice((page - 1) * pageSize, page * pageSize);
-  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Damage Mechanism</th><th>Corrosion Rate</th><th>Current Thickness</th><th>Risk</th><th>RBI Status</th></tr></thead><tbody>${visible.map(x => `<tr><td>${esc(x.tag)}</td><td>${esc(x.damageMechanism || '-')}</td><td>${x.corrosionRate ?? '-'} mm/y</td><td>${x.currentThickness ?? '-'} mm</td><td><span class="risk">${esc(x.risk || '-')}</span></td><td>${esc(x.rbiStatus || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
-  table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderRbiTable(list, Number(btn.dataset.page))));
+  $('recentAssets').innerHTML = list.length ? `<div class="mini-table">${list.map(x => `<div><b>${esc(x.tag)}</b><span>${esc(x.name)}</span><em>${esc(x.wilayahKerja || '-')}</em></div>`).join('')}</div>` : '<p class="muted">No asset data.</p>';
 }
 
 function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function escAttr(v) { return esc(v).replace(/`/g, '&#096;'); }
