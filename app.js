@@ -266,6 +266,16 @@ function inspectionYearValue(item) {
   return match ? match[0] : 'Unknown';
 }
 
+function formatInspectionDate(value) {
+  if (!value) return '-';
+  const raw = String(value).trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return raw;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12 ? `${match[3]}/${months[month - 1]}/${match[1]}` : raw;
+}
+
 function renderInspectionByYear(list, selectedYear = '') {
   const summary = $('inspectionYearSummary');
   const table = $('inspectionTable');
@@ -291,7 +301,7 @@ function renderInspectionPage(filtered, selectedYear, page) {
   page = Math.min(Math.max(1, page), totalPages);
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada inspection pada tahun yang dipilih.</div>'; return; }
-  table.innerHTML = `<div class="report-heading"><h3>Inspection Report ${selectedYear || 'All Years'}</h3><span class="badge">${filtered.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.date || '-')}</td><td>${esc(x.method || '-')}</td><td>${esc(x.finding || '-')}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page, totalPages)}`;
+  table.innerHTML = `<div class="report-heading"><h3>Inspection Report ${selectedYear || 'All Years'}</h3><span class="badge">${filtered.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(formatInspectionDate(x.date))}</td><td>${esc(x.method || '-')}</td><td>${esc(x.finding || '-')}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page, totalPages)}`;
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderInspectionPage(filtered, selectedYear, Number(btn.dataset.page))));
 }
 
