@@ -312,7 +312,7 @@ function renderAssetTable(list, page = 1) {
   const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   $('assetCount').textContent = `${list.length.toLocaleString('id-ID')} asset — ${currentRegion || ''}`;
   if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada asset sesuai filter.</div>'; return; }
-  table.innerHTML = `<table class="asset-table"><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.innerHTML = `<table class="asset-table"><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td><td class="asset-remarks-cell">${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
   enableAssetColumnResize();
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderAssetTable(list, Number(btn.dataset.page))));
 }
@@ -380,10 +380,11 @@ function installAssetResizeStyles() {
   const style = document.createElement('style');
   style.id = 'asset-resize-styles';
   style.textContent = `
-    #assetTable { overflow-x: auto; }
-    #assetTable table.asset-table { table-layout: fixed; min-width: 1600px; }
+    #assetTable { overflow-x: auto; overflow-y: visible; width: 100%; }
+    #assetTable table.asset-table { table-layout: fixed; min-width: 1600px; width: max-content; }
     #assetTable table.asset-table th,
-    #assetTable table.asset-table td { overflow-wrap: anywhere; vertical-align: top; }
+    #assetTable table.asset-table td { overflow-wrap: anywhere; word-break: break-word; white-space: normal; vertical-align: top; }
+    #assetTable table.asset-table td.asset-remarks-cell { white-space: normal !important; overflow: visible !important; overflow-wrap: anywhere !important; word-break: break-word !important; text-align: justify !important; text-justify: inter-word; line-height: 1.45; }
     #assetTable table.asset-table th { position: sticky; top: 0; z-index: 2; }
     #assetTable .asset-resizable-header { position: sticky; }
     #assetTable .asset-column-resizer { position:absolute; top:0; right:-3px; width:7px; height:100%; cursor:col-resize; z-index:5; }
