@@ -1,0 +1,5 @@
+const CONFIG = {
+  brand: "DATABASE ASSET STATIC EQUIPMENT",
+  title: "DATABASE ASSET STATIC EQUIPMENT",
+  reportUrl: ""
+};
