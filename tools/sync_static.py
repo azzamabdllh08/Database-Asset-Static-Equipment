@@ -77,7 +77,26 @@ def build_records(rows, headers):
 
         tag = serialise(value_for(row, header_map, ALIASES["tag"]))
         tag_key = str(tag or "").strip().upper()
-        if not tag_key or tag_key in seen_tags:
+        if not tag_key:
+            continue
+
+        # Inspection records are collected from every static row, including
+        # rows belonging to an asset tag that has already been registered.
+        inspection_date = value_for(row, header_map, ALIASES["date"])
+        method = value_for(row, header_map, ALIASES["method"])
+        finding = value_for(row, header_map, ALIASES["finding"])
+        remarks = value_for(row, header_map, ALIASES["remarks"])
+        if any(v not in (None, "") for v in (inspection_date, method, finding, remarks)):
+            inspections.append({
+                "tag": tag,
+                "date": serialise(inspection_date),
+                "method": serialise(method),
+                "finding": serialise(finding),
+                "remarks": serialise(remarks),
+            })
+
+        # Asset Register keeps one master asset record per Tag No.
+        if tag_key in seen_tags:
             continue
         seen_tags.add(tag_key)
 
@@ -100,21 +119,23 @@ def build_records(rows, headers):
             "currentThickness": serialise(value_for(row, header_map, ALIASES["currentThickness"])),
             "rbiStatus": serialise(value_for(row, header_map, ALIASES["rbiStatus"])),
             "equipmentCategory": "Static",
+            "remarks": "",
         }
         assets.append(asset)
 
-        inspection_date = value_for(row, header_map, ALIASES["date"])
-        method = value_for(row, header_map, ALIASES["method"])
-        finding = value_for(row, header_map, ALIASES["finding"])
-        remarks = value_for(row, header_map, ALIASES["remarks"])
-        if any(v not in (None, "") for v in (inspection_date, method, finding, remarks)):
-            inspections.append({
-                "tag": tag,
-                "date": serialise(inspection_date),
-                "method": serialise(method),
-                "finding": serialise(finding),
-                "remarks": serialise(remarks),
-            })
+    # Remarks shown in Asset Register come from the same Tindak Lanjut field
+    # used by the Inspection menu. Use the latest inspection record that has
+    # a non-empty remarks value for each tag.
+    remarks_by_tag = {}
+    for inspection in inspections:
+        value = str(inspection.get("remarks") or "").strip()
+        if value:
+            key = str(inspection.get("tag") or "").strip().upper()
+            if key:
+                remarks_by_tag[key] = value
+
+    for asset in assets:
+        asset["remarks"] = remarks_by_tag.get(str(asset.get("tag") or "").strip().upper(), "")
 
     return assets, inspections
 
@@ -272,10 +293,11 @@ def main():
     print(f"Static assets: {len(assets):,}")
     print(f"Inspection records: {len(inspections):,}")
     print(f"Wilayah Kerja: {len(set(str(x.get('wilayahKerja') or 'Unknown') for x in assets))}")
+    print(f"Assets with remarks: {sum(1 for x in assets if x.get('remarks')):,}")
     print(f"Database: {output}")
 
     if args.push:
-        git_push(repo, "Sync Static Equipment database by Wilayah Kerja")
+        git_push(repo, "Sync Static Equipment database with inspection remarks")
         print("Push ke GitHub selesai.")
 
 
