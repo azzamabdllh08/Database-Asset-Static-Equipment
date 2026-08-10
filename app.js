@@ -242,7 +242,7 @@ function filterCurrentRegion() {
   const location = $('locationFilter').value;
   const type = $('typeFilter').value;
   const filtered = currentRegionAssets.filter(x => {
-    const hay = `${x.tag} ${x.name} ${x.objectType} ${x.service} ${x.area}`.toLowerCase();
+    const hay = `${x.tag} ${x.name} ${x.objectType} ${x.service} ${x.area} ${x.remarks}`.toLowerCase();
     return (!q || hay.includes(q)) && (!location || x.area === location) && (!type || x.objectType === type);
   });
   renderAssetTable(filtered, 1);
@@ -302,7 +302,7 @@ function renderAssetTable(list, page = 1) {
   const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   $('assetCount').textContent = `${list.length.toLocaleString('id-ID')} asset — ${currentRegion || ''}`;
   if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada asset sesuai filter.</div>'; return; }
-  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderAssetTable(list, Number(btn.dataset.page))));
 }
 
