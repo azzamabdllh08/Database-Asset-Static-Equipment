@@ -41,21 +41,23 @@
         <div class="panel"><h3>Asset by Wilayah Kerja</h3><div id="regionChart"></div></div>
         <div class="panel"><h3>Asset by Object Type</h3><div id="typeChart"></div></div>
 
-        <div class="panel wide">
-          <div class="section-head">
-            <h3>RBI Risk Matrix 1AP</h3>
-            <span class="badge">Risk 1AP</span>
+        <div class="risk-overview">
+          <div class="panel risk-matrix-panel">
+            <div class="section-head">
+              <h3>RBI Risk Matrix 1AP</h3>
+              <span class="badge">Risk 1AP</span>
+            </div>
+            <div id="riskMatrix"></div>
+            <div id="riskSummary" class="legacy-risk-summary"></div>
           </div>
-          <div id="riskMatrix"></div>
-          <div id="riskSummary"></div>
-        </div>
 
-        <div class="panel wide">
-          <div class="section-head">
-            <h3>Diagram Risiko 1AP</h3>
-            <span id="riskTotalBadge" class="badge">0 asset</span>
+          <div class="panel risk-diagram-panel">
+            <div class="section-head">
+              <h3>Diagram Risiko 1AP</h3>
+              <span id="riskTotalBadge" class="badge">0 asset</span>
+            </div>
+            <div id="riskDiagram"></div>
           </div>
-          <div id="riskDiagram"></div>
         </div>
 
         <div class="panel wide"><h3>Recent Assets</h3><div id="recentAssets"></div></div>
