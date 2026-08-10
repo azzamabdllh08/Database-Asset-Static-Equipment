@@ -15,8 +15,9 @@ ALIASES = {
     "wilayahKerja": ["Wilayah Kerja", "Wilayah", "Working Area", "Work Area"],
     "tag": ["Tag No", "Tag No.", "Tag Number", "Equipment Tag", "Tag", "Equipment No"],
     "name": ["Deskripsi Peralatan", "Equipment Description", "Description", "Equipment Name", "Equipment", "Name"],
-    "objectType": ["Object Type", "ObjectType"],
-    "type": ["Object Type", "ObjectType", "Equipment Type", "Type", "Equipment Type Description"],
+    # Object Type dashboard must use Object Type SHU from the Excel first.
+    "objectType": ["Object Type SHU", "ObjectType SHU", "Object Type", "ObjectType"],
+    "type": ["Object Type SHU", "ObjectType SHU", "Object Type", "ObjectType", "Equipment Type", "Type", "Equipment Type Description"],
     "area": ["Area", "Location", "Plant Area", "Unit", "Zone"],
     "service": ["Service", "Process Service", "Fluid Service", "Service Description"],
     "material": ["Material", "Material Specification", "Material Spec", "Material Grade"],
@@ -80,8 +81,6 @@ def build_records(rows, headers):
         if not tag_key:
             continue
 
-        # Inspection records are collected from every static row, including
-        # rows belonging to an asset tag that has already been registered.
         inspection_date = value_for(row, header_map, ALIASES["date"])
         method = value_for(row, header_map, ALIASES["method"])
         finding = value_for(row, header_map, ALIASES["finding"])
@@ -95,7 +94,6 @@ def build_records(rows, headers):
                 "remarks": serialise(remarks),
             })
 
-        # Asset Register keeps one master asset record per Tag No.
         if tag_key in seen_tags:
             continue
         seen_tags.add(tag_key)
@@ -123,9 +121,6 @@ def build_records(rows, headers):
         }
         assets.append(asset)
 
-    # Remarks shown in Asset Register come from the same Tindak Lanjut field
-    # used by the Inspection menu. Use the latest inspection record that has
-    # a non-empty remarks value for each tag.
     remarks_by_tag = {}
     for inspection in inspections:
         value = str(inspection.get("remarks") or "").strip()
@@ -297,7 +292,7 @@ def main():
     print(f"Database: {output}")
 
     if args.push:
-        git_push(repo, "Sync Static Equipment database with inspection remarks")
+        git_push(repo, "Sync Object Type from Object Type SHU")
         print("Push ke GitHub selesai.")
 
 
