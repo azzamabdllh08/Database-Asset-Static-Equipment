@@ -83,7 +83,7 @@ async function selectRegion(slug) {
   type.disabled = true;
   search.disabled = true;
   location.innerHTML = '<option value="">Loading Location...</option>';
-  type.innerHTML = '<option value="">All Equipment Type</option>';
+  type.innerHTML = '<option value="">All Object Type</option>';
 
   if (!slug) {
     $('assetCount').textContent = 'Pilih Wilayah Kerja';
@@ -99,9 +99,9 @@ async function selectRegion(slug) {
   currentRegionAssets = Array.isArray(data.assets) ? data.assets : [];
 
   const locations = [...new Set(currentRegionAssets.map(x => x.area).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
-  const types = [...new Set(currentRegionAssets.map(x => x.type).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
+  const types = [...new Set(currentRegionAssets.map(x => x.objectType).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
   location.innerHTML = '<option value="">All Location</option>' + locations.map(v => `<option value="${escAttr(v)}">${esc(v)}</option>`).join('');
-  type.innerHTML = '<option value="">All Equipment Type</option>' + types.map(v => `<option value="${escAttr(v)}">${esc(v)}</option>`).join('');
+  type.innerHTML = '<option value="">All Object Type</option>' + types.map(v => `<option value="${escAttr(v)}">${esc(v)}</option>`).join('');
   location.disabled = false;
   type.disabled = false;
   search.disabled = false;
@@ -121,8 +121,8 @@ function filterCurrentRegion() {
   const location = $('locationFilter').value;
   const type = $('typeFilter').value;
   const filtered = currentRegionAssets.filter(x => {
-    const hay = `${x.tag} ${x.name} ${x.service} ${x.area} ${x.type}`.toLowerCase();
-    return (!q || hay.includes(q)) && (!location || x.area === location) && (!type || x.type === type);
+    const hay = `${x.tag} ${x.name} ${x.objectType} ${x.service} ${x.area}`.toLowerCase();
+    return (!q || hay.includes(q)) && (!location || x.area === location) && (!type || x.objectType === type);
   });
   renderAssetTable(filtered, 1);
 }
@@ -181,7 +181,7 @@ function renderAssetTable(list, page = 1) {
   const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   $('assetCount').textContent = `${list.length.toLocaleString('id-ID')} asset — ${currentRegion || ''}`;
   if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada asset sesuai filter.</div>'; return; }
-  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Equipment</th><th>Type</th><th>Location</th><th>Service</th><th>Material</th><th>Risk</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name)}</td><td>${esc(x.type)}</td><td>${esc(x.area)}</td><td>${esc(x.service)}</td><td>${esc(x.material)}</td><td><span class="risk">${esc(x.risk || '-')}</span></td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Service</th><th>Material</th><th>Risk 1AP</th><th>Integrity Status</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td>${esc(x.service || '-')}</td><td>${esc(x.material || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderAssetTable(list, Number(btn.dataset.page))));
 }
 
@@ -190,8 +190,17 @@ function renderRbiTable(list, page = 1) {
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   page = Math.min(Math.max(1, page), totalPages);
   const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  table.innerHTML = `<div class="report-heading"><h3>RBI — ${esc(currentRegion || '')}</h3><span class="badge">${list.length.toLocaleString('id-ID')} asset</span></div><table><thead><tr><th>Tag No.</th><th>Damage Mechanism</th><th>Corrosion Rate</th><th>Current Thickness</th><th>Risk</th><th>RBI Status</th></tr></thead><tbody>${visible.map(x => `<tr><td>${esc(x.tag)}</td><td>${esc(x.damageMechanism || '-')}</td><td>${x.corrosionRate ?? '-'} mm/y</td><td>${x.currentThickness ?? '-'} mm</td><td><span class="risk">${esc(x.risk || '-')}</span></td><td>${esc(x.rbiStatus || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.innerHTML = `<div class="report-heading"><h3>RBI — ${esc(currentRegion || '')}</h3><span class="badge">${list.length.toLocaleString('id-ID')} asset</span></div><table><thead><tr><th>Tag No.</th><th>Damage Mechanism</th><th>Corrosion Rate</th><th>Current Thickness</th><th>Risk 1AP</th><th>RBI Status</th></tr></thead><tbody>${visible.map(x => `<tr><td>${esc(x.tag)}</td><td>${esc(x.damageMechanism || '-')}</td><td>${x.corrosionRate ?? '-'} mm/y</td><td>${x.currentThickness ?? '-'} mm</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(x.rbiStatus || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderRbiTable(list, Number(btn.dataset.page))));
+}
+
+function integrityDisplay(value) {
+  const v = String(value || '').trim();
+  const key = v.toLowerCase();
+  if (key === 'poor') return 'Poor';
+  if (key === 'fair') return 'Fair';
+  if (key === 'good') return 'Good';
+  return v || '-';
 }
 
 function paginationHtml(page, totalPages) {
