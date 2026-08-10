@@ -63,10 +63,24 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$USER_ID" || { echo "Missing AZURE_ONEDRIVE_USER_ID"; exit 1; }
-          RESPONSE=$(curl -fsS \
+
+          HTTP_CODE=$(curl -sS -o drive-response.json -w '%{http_code}' \
             -H "Authorization: Bearer ${TOKEN}" \
             "https://graph.microsoft.com/v1.0/users/${USER_ID}/drive")
-          DRIVE_ID=$(python -c 'import json,sys; print(json.load(sys.stdin).get("id", ""))' <<< "$RESPONSE")
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Microsoft Graph OneDrive request failed (HTTP $HTTP_CODE)."
+            python - <<'PY'
+          import json
+          data = json.load(open('drive-response.json', encoding='utf-8'))
+          err = data.get('error', {})
+          print('error_code:', err.get('code', 'unknown'))
+          print('error_message:', err.get('message', 'No message returned'))
+          PY
+            exit 1
+          fi
+
+          DRIVE_ID=$(python -c 'import json,sys; print(json.load(sys.stdin).get("id", ""))' < drive-response.json)
           test -n "$DRIVE_ID" || { echo "Drive ID was not found."; exit 1; }
           echo "DRIVE_ID=$DRIVE_ID" >> "$GITHUB_ENV"
 
