@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>DATABASE ASSET STATIC EQUIPMENT</title>
   <link rel="stylesheet" href="style.css">
+  <script>
+    // Keep the public GitHub Pages URL clean when a sharing service appends
+    // tracking parameters such as ?utm_source=chatgpt.com.
+    (function () {
+      try {
+        const url = new URL(window.location.href);
+        const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+        let changed = false;
+        trackingParams.forEach(param => {
+          if (url.searchParams.has(param)) {
+            url.searchParams.delete(param);
+            changed = true;
+          }
+        });
+        if (changed) window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : '') + (url.hash || ''));
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <header class="topbar">
