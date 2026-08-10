@@ -31,7 +31,7 @@ function initApp() {
 
   renderBars('regionChart', Object.fromEntries((MANIFEST.regions || []).map(r => [r.name, r.count])));
   renderBars('typeChart', MANIFEST.typeCounts || {});
-  renderBars('riskChart', MANIFEST.riskCounts || {});
+  renderRiskDashboard(MANIFEST.riskCounts || {});
   renderRecent(MANIFEST.recentAssets || []);
   fillRegions();
 
@@ -63,6 +63,127 @@ function initApp() {
   $('typeFilter').addEventListener('change', filterCurrentRegion);
   $('assetSearch').addEventListener('input', filterCurrentRegion);
   $('inspectionYear').addEventListener('change', () => renderInspectionByYear(inspectionData || [], $('inspectionYear').value));
+}
+
+/* RiskWise 1AP matrix categories, matching the supplied 5x5 risk matrix colors. */
+const RISK_MATRIX = {
+  5: { A: 'Unsatisfactory', B: 'Unsatisfactory', C: 'Unsatisfactory', D: 'Critical', E: 'Critical' },
+  4: { A: 'Tolerable', B: 'Tolerable', C: 'Tolerable', D: 'Tolerable', E: 'Critical' },
+  3: { A: 'Acceptable', B: 'Acceptable', C: 'Tolerable', D: 'Tolerable', E: 'Critical' },
+  2: { A: 'Favourable', B: 'Acceptable', C: 'Tolerable', D: 'Tolerable', E: 'Unsatisfactory' },
+  1: { A: 'Favourable', B: 'Favourable', C: 'Tolerable', D: 'Tolerable', E: 'Tolerable' }
+};
+
+const RISK_COLORS = {
+  Favourable: '#00b050',
+  Acceptable: '#92d050',
+  Tolerable: '#fff200',
+  Unsatisfactory: '#ffc000',
+  Critical: '#ff0000',
+  'No AP Detected': '#d9dde3'
+};
+
+const RISK_ORDER = ['Favourable', 'Acceptable', 'Tolerable', 'Unsatisfactory', 'Critical', 'No AP Detected'];
+
+function riskCellCategory(risk) {
+  const match = String(risk || '').trim().toUpperCase().match(/^([1-5])([A-E])$/);
+  if (!match) return 'No AP Detected';
+  return RISK_MATRIX[Number(match[1])]?.[match[2]] || 'No AP Detected';
+}
+
+function normaliseRiskCounts(data) {
+  const counts = {};
+  RISK_ORDER.forEach(k => counts[k] = 0);
+  Object.entries(data || {}).forEach(([risk, value]) => {
+    const n = Number(value) || 0;
+    if (/^[1-5][A-E]$/i.test(String(risk).trim())) counts[risk.toUpperCase()] = (counts[risk.toUpperCase()] || 0) + n;
+    else counts['No AP Detected'] += n;
+  });
+  return counts;
+}
+
+function categoryCountsFromRiskCounts(riskCounts) {
+  const out = {};
+  RISK_ORDER.forEach(k => out[k] = 0);
+  Object.entries(riskCounts || {}).forEach(([risk, value]) => {
+    out[riskCellCategory(risk)] += Number(value) || 0;
+  });
+  return out;
+}
+
+function renderRiskDashboard(rawRiskCounts) {
+  const riskCounts = {};
+  Object.entries(rawRiskCounts || {}).forEach(([risk, value]) => {
+    const key = String(risk || '').trim();
+    const n = Number(value) || 0;
+    if (/^[1-5][A-E]$/i.test(key)) riskCounts[key.toUpperCase()] = n;
+    else riskCounts['Unknown'] = (riskCounts['Unknown'] || 0) + n;
+  });
+
+  renderRiskMatrix(riskCounts);
+  const categories = categoryCountsFromRiskCounts(riskCounts);
+  renderRiskSummary(categories);
+  renderRiskDiagram(categories);
+}
+
+function renderRiskMatrix(riskCounts) {
+  const el = $('riskMatrix');
+  const rows = [5,4,3,2,1];
+  const cols = ['A','B','C','D','E'];
+  el.innerHTML = `
+    <div class="risk-matrix-wrap">
+      <div class="risk-matrix-ylabel">Likelihood</div>
+      <div class="risk-matrix-box">
+        <div class="risk-matrix-grid">
+          <div class="risk-corner"></div>
+          ${cols.map(c => `<div class="risk-axis risk-axis-x">${c}</div>`).join('')}
+          ${rows.map(r => {
+            return `<div class="risk-axis risk-axis-y">${r}</div>${cols.map(c => {
+              const key = `${r}${c}`;
+              const category = RISK_MATRIX[r][c];
+              const count = Number(riskCounts[key] || 0);
+              return `<div class="risk-cell" style="background:${RISK_COLORS[category]}" title="${key} — ${category}"><span>${count.toLocaleString('id-ID')}</span><small>${key}</small></div>`;
+            }).join('')}`;
+          }).join('')}
+        </div>
+        <div class="risk-matrix-xlabel">Consequence</div>
+      </div>
+    </div>`;
+}
+
+function renderRiskSummary(categories) {
+  const total = RISK_ORDER.reduce((s, k) => s + Number(categories[k] || 0), 0);
+  $('riskSummary').innerHTML = `
+    <div class="risk-summary-table-wrap">
+      <table class="risk-summary-table">
+        <thead><tr><th>Integrity Category</th><th>Jumlah</th><th>%</th></tr></thead>
+        <tbody>
+          ${RISK_ORDER.map(k => `<tr><td><span class="category-dot" style="background:${RISK_COLORS[k]}"></span>${k}</td><td><b>${Number(categories[k] || 0).toLocaleString('id-ID')}</b></td><td>${total ? ((Number(categories[k] || 0) / total) * 100).toFixed(1) : '0.0'}%</td></tr>`).join('')}
+          <tr class="total-row"><td>TOTAL</td><td>${total.toLocaleString('id-ID')}</td><td>100%</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderRiskDiagram(categories) {
+  const total = RISK_ORDER.reduce((s, k) => s + Number(categories[k] || 0), 0);
+  const entries = RISK_ORDER.map(k => ({ key: k, value: Number(categories[k] || 0) })).filter(x => x.value > 0);
+  let start = 0;
+  const segments = entries.map(({ key, value }) => {
+    const end = total ? start + (value / total) * 360 : start;
+    const segment = `${RISK_COLORS[key]} ${start}deg ${end}deg`;
+    start = end;
+    return segment;
+  });
+  const gradient = segments.length ? `conic-gradient(${segments.join(',')})` : `conic-gradient(#d9dde3 0 360deg)`;
+  $('riskTotalBadge').textContent = `${total.toLocaleString('id-ID')} asset`;
+  $('riskDiagram').innerHTML = `
+    <div class="risk-diagram">
+      <div class="risk-donut" style="background:${gradient}"><div class="risk-donut-center"><b>${total.toLocaleString('id-ID')}</b><span>Total</span></div></div>
+      <div class="risk-legend">
+        ${RISK_ORDER.map(k => `<div class="risk-legend-row"><span class="category-dot" style="background:${RISK_COLORS[k]}"></span><span>${k}</span><b>${Number(categories[k] || 0).toLocaleString('id-ID')}</b><small>${total ? ((Number(categories[k] || 0) / total) * 100).toFixed(1) : '0.0'}%</small></div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function fillRegions() {
