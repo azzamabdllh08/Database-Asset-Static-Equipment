@@ -38,6 +38,7 @@
       </div>
 
       <div class="grid">
+        <div class="panel"><h3>Asset by Wilayah Kerja</h3><div id="regionChart"></div></div>
         <div class="panel"><h3>Asset by Equipment Type</h3><div id="typeChart"></div></div>
         <div class="panel"><h3>RBI Risk Summary</h3><div id="riskChart"></div></div>
         <div class="panel wide"><h3>Recent Assets</h3><div id="recentAssets"></div></div>
@@ -46,13 +47,14 @@
 
     <section id="assets" class="page">
       <div class="panel">
-        <div class="section-head"><h2>Asset Register</h2><span id="assetCount" class="badge">0 asset</span></div>
+        <div class="section-head"><h2>Asset Register</h2><span id="assetCount" class="badge">Pilih Wilayah Kerja</span></div>
         <div class="filters">
-          <input id="assetSearch" placeholder="Search Tag No / Equipment Name / Service">
-          <select id="typeFilter"><option value="">All Equipment Type</option></select>
-          <select id="areaFilter"><option value="">All Area</option></select>
+          <select id="regionFilter"><option value="">Pilih Wilayah Kerja</option></select>
+          <select id="locationFilter" disabled><option value="">All Location</option></select>
+          <input id="assetSearch" placeholder="Search Tag No / Equipment Name / Service" disabled>
+          <select id="typeFilter" disabled><option value="">All Equipment Type</option></select>
         </div>
-        <div id="assetTable"></div>
+        <div id="assetTable"><div class="empty">Pilih Wilayah Kerja untuk memuat asset.</div></div>
       </div>
     </section>
 
@@ -62,9 +64,9 @@
           <h2>Inspection History by Year</h2>
           <select id="inspectionYear" class="year-select"><option value="">All Years</option></select>
         </div>
-        <p class="muted">Inspection report dikelompokkan berdasarkan tahun inspeksi. Pilih tahun untuk melihat detail report.</p>
+        <p class="muted">Inspection report dikelompokkan berdasarkan tahun inspeksi. Data inspection dimuat hanya saat tab ini dibuka.</p>
         <div id="inspectionYearSummary" class="year-grid"></div>
-        <div id="inspectionTable"></div>
+        <div id="inspectionTable"><div class="empty">Buka tab Inspection untuk memuat data.</div></div>
       </div>
     </section>
 
@@ -72,7 +74,7 @@
       <div class="panel">
         <div class="section-head"><h2>RBI Assessment</h2></div>
         <div class="notice">Modul RBI menggunakan data assessment yang tersimpan. Nilai RBI tidak dihitung atau dibuat secara asumsi oleh dashboard.</div>
-        <div id="rbiTable"></div>
+        <div id="rbiTable"><div class="empty">Pilih modul RBI untuk memuat data.</div></div>
       </div>
     </section>
 
@@ -86,7 +88,6 @@
   </main>
 
   <script src="config.js"></script>
-  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
