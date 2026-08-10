@@ -14,15 +14,17 @@ ALIASES = {
     "category": ["Equipment Category", "EquipmentCategory", "Category"],
     "wilayahKerja": ["Wilayah Kerja", "Wilayah", "Working Area", "Work Area"],
     "tag": ["Tag No", "Tag No.", "Tag Number", "Equipment Tag", "Tag", "Equipment No"],
-    "name": ["Equipment Name", "Equipment", "Description", "Equipment Description", "Name"],
-    "type": ["Equipment Type", "Type", "Equipment Type Description"],
+    "name": ["Deskripsi Peralatan", "Equipment Description", "Description", "Equipment Name", "Equipment", "Name"],
+    "objectType": ["Object Type", "ObjectType"],
+    "type": ["Object Type", "ObjectType", "Equipment Type", "Type", "Equipment Type Description"],
     "area": ["Area", "Location", "Plant Area", "Unit", "Zone"],
     "service": ["Service", "Process Service", "Fluid Service", "Service Description"],
     "material": ["Material", "Material Specification", "Material Spec", "Material Grade"],
-    "risk": ["Risk", "Risk Ranking", "Risk Rank", "RBI Risk"],
-    "risk1AP": ["1AP", "Risk 1AP", "Risk 1 AP", "1 AP"],
-    "risk2AP": ["2AP", "Risk 2AP", "Risk 2 AP", "2 AP"],
-    "risk3AP": ["3AP", "Risk 3AP", "Risk 3 AP", "3 AP"],
+    "integrityStatus": ["Integrity Status", "Integrity status AZ11APS", "Integrity Status AZ11APS"],
+    "risk": ["Risk 1AP", "Risk 1 AP", "1AP", "1 AP", "Risk", "Risk Ranking", "Risk Rank", "RBI Risk"],
+    "risk1AP": ["Risk 1AP", "Risk 1 AP", "1AP", "1 AP"],
+    "risk2AP": ["Risk 2AP", "Risk 2 AP", "2AP", "2 AP"],
+    "risk3AP": ["Risk 3AP", "Risk 3 AP", "3AP", "3 AP"],
     "damageMechanism": ["Damage Mechanism", "DamageMechanism", "DM"],
     "corrosionRate": ["Corrosion Rate", "CorrosionRate", "CR"],
     "currentThickness": ["Current Thickness", "CurrentThickness", "Measured Thickness", "UT Thickness"],
@@ -66,18 +68,39 @@ def build_records(rows, headers):
 
     assets = []
     inspections = []
+    seen_tags = set()
+
     for row in rows:
         raw_category = value_for(row, header_map, ALIASES["category"])
         if str(raw_category or "").strip().lower() != "static":
             continue
 
+        tag = serialise(value_for(row, header_map, ALIASES["tag"]))
+        tag_key = str(tag or "").strip().upper()
+        if not tag_key or tag_key in seen_tags:
+            continue
+        seen_tags.add(tag_key)
+
         asset = {
-            key: serialise(value_for(row, header_map, aliases))
-            for key, aliases in ALIASES.items()
-            if key not in {"category", "date", "method", "finding", "remarks"}
+            "wilayahKerja": serialise(value_for(row, header_map, ALIASES["wilayahKerja"])) or "Unknown",
+            "tag": tag,
+            "name": serialise(value_for(row, header_map, ALIASES["name"])),
+            "objectType": serialise(value_for(row, header_map, ALIASES["objectType"])),
+            "type": serialise(value_for(row, header_map, ALIASES["type"])),
+            "area": serialise(value_for(row, header_map, ALIASES["area"])),
+            "service": serialise(value_for(row, header_map, ALIASES["service"])),
+            "material": serialise(value_for(row, header_map, ALIASES["material"])),
+            "integrityStatus": serialise(value_for(row, header_map, ALIASES["integrityStatus"])),
+            "risk1AP": serialise(value_for(row, header_map, ALIASES["risk1AP"])),
+            "risk2AP": serialise(value_for(row, header_map, ALIASES["risk2AP"])),
+            "risk3AP": serialise(value_for(row, header_map, ALIASES["risk3AP"])),
+            "risk": serialise(value_for(row, header_map, ALIASES["risk1AP"])),
+            "damageMechanism": serialise(value_for(row, header_map, ALIASES["damageMechanism"])),
+            "corrosionRate": serialise(value_for(row, header_map, ALIASES["corrosionRate"])),
+            "currentThickness": serialise(value_for(row, header_map, ALIASES["currentThickness"])),
+            "rbiStatus": serialise(value_for(row, header_map, ALIASES["rbiStatus"])),
+            "equipmentCategory": "Static",
         }
-        asset["wilayahKerja"] = asset.get("wilayahKerja") or "Unknown"
-        asset["equipmentCategory"] = "Static"
         assets.append(asset)
 
         inspection_date = value_for(row, header_map, ALIASES["date"])
@@ -86,7 +109,7 @@ def build_records(rows, headers):
         remarks = value_for(row, header_map, ALIASES["remarks"])
         if any(v not in (None, "") for v in (inspection_date, method, finding, remarks)):
             inspections.append({
-                "tag": serialise(value_for(row, header_map, ALIASES["tag"])),
+                "tag": tag,
                 "date": serialise(inspection_date),
                 "method": serialise(method),
                 "finding": serialise(finding),
@@ -146,17 +169,10 @@ def count_by(records, key):
 
 
 def write_database(repo_root: Path, assets, inspections):
-    """Write a small manifest and lazy-loaded regional JSON files.
-
-    data.js is retained as a backward-compatible artifact, but the dashboard no
-    longer loads it on startup. The browser first loads only manifest.json, then
-    loads one region file when the user opens Asset Register/selects a region.
-    """
     data_root = repo_root / "data"
     regions_root = data_root / "regions"
     regions_root.mkdir(parents=True, exist_ok=True)
 
-    # Remove stale regional files from an earlier sync.
     for old in regions_root.glob("*.json"):
         old.unlink()
 
@@ -185,17 +201,16 @@ def write_database(repo_root: Path, assets, inspections):
             "locations": len(count_by(records, "area")),
         })
 
-    # Compact dashboard-only data. No full asset/inspection arrays here.
     recent = assets[:8]
-    risk_values = {"4A","4B","4C","4D","4E","5A","5B","5C","5D","5E"}
+    risk_values = {"4A", "4B", "4C", "4D", "4E", "5A", "5B", "5C", "5D", "5E"}
     manifest = {
         "generatedAt": datetime.now().isoformat(timespec="seconds"),
         "totalAssets": len(assets),
         "totalInspections": len(inspections),
-        "totalRbi": sum(1 for x in assets if x.get("risk")),
-        "highRisk": sum(1 for x in assets if str(x.get("risk") or "") in risk_values),
-        "typeCounts": count_by(assets, "type"),
-        "riskCounts": count_by(assets, "risk"),
+        "totalRbi": sum(1 for x in assets if x.get("risk1AP")),
+        "highRisk": sum(1 for x in assets if str(x.get("risk1AP") or "") in risk_values),
+        "typeCounts": count_by(assets, "objectType"),
+        "riskCounts": count_by(assets, "risk1AP"),
         "regions": region_entries,
         "recentAssets": recent,
     }
@@ -209,7 +224,6 @@ def write_database(repo_root: Path, assets, inspections):
         encoding="utf-8",
     )
 
-    # Keep the legacy data.js for compatibility with any old local copy.
     output = repo_root / "data.js"
     payload_assets = json.dumps(assets, ensure_ascii=False, separators=(",", ":"))
     payload_inspections = json.dumps(inspections, ensure_ascii=False, separators=(",", ":"))
