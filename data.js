@@ -1,55 +1,29 @@
+// DATABASE STATIC EQUIPMENT
+// Tidak ada kalkulasi RBI di repository ini.
+// Risk/AP diinput manual sesuai assessment yang sudah ditetapkan.
+// Nilai AP yang digunakan: 1AP, 2AP, 3AP.
+// Tambahkan asset baru sebagai object di dalam array ASSETS.
+
 const ASSETS = [
-  {
-    tag: "DEMO-V-001",
-    name: "Feed Separator",
-    type: "Vessel",
-    area: "Area 01",
-    service: "Process Gas",
-    material: "SA-516 Gr.70",
-    designPressure: "10 barg",
-    designTemperature: "120 °C",
-    nominalThickness: 12,
-    minThickness: 9.5,
-    currentThickness: 11.2,
-    corrosionRate: 0.10,
-    damageMechanism: "Internal Thinning",
-    risk: "3C",
-    rbiStatus: "Assessment"
-  },
-  {
-    tag: "DEMO-T-001",
-    name: "Storage Tank",
-    type: "Tank",
-    area: "Area 02",
-    service: "Crude",
-    material: "SA-516 Gr.70",
-    designPressure: "0.5 barg",
-    designTemperature: "60 °C",
-    nominalThickness: 10,
-    minThickness: 7.5,
-    currentThickness: 8.1,
-    corrosionRate: 0.08,
-    damageMechanism: "Atmospheric Corrosion",
-    risk: "2C",
-    rbiStatus: "Assessment"
-  },
-  {
-    tag: "DEMO-E-001",
-    name: "Heat Exchanger",
-    type: "Heat Exchanger",
-    area: "Area 03",
-    service: "Cooling Water",
-    material: "Carbon Steel",
-    designPressure: "8 barg",
-    designTemperature: "90 °C",
-    nominalThickness: 8,
-    minThickness: 5.8,
-    currentThickness: 7.1,
-    corrosionRate: 0.05,
-    damageMechanism: "Erosion-Corrosion",
-    risk: "1C",
-    rbiStatus: "Assessment"
-  }
+  // Contoh struktur — hapus contoh ini saat memasukkan data asli:
+  // {
+  //   tag: "V-001",
+  //   name: "Separator",
+  //   type: "Vessel",
+  //   area: "Area 01",
+  //   service: "Process Gas",
+  //   material: "SA-516 Gr.70",
+  //   designPressure: "10 barg",
+  //   designTemperature: "120 °C",
+  //   nominalThickness: 12,
+  //   minThickness: 9.5,
+  //   currentThickness: 11.2,
+  //   damageMechanism: "Internal Thinning",
+  //   risk: "2AP",
+  //   rbiStatus: "2AP"
+  // }
 ];
 
+// Riwayat inspeksi hanya disimpan sebagai database.
+// Tidak dilakukan perhitungan corrosion rate / remaining life otomatis.
 const INSPECTIONS = [];
