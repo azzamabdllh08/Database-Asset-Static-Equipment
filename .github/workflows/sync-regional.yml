@@ -1,0 +1,74 @@
+name: Sync Regional Static Equipment Database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip openpyxl
+
+      - name: Download source Excel from OneDrive public share link
+        env:
+          SHARED_URL: 'https://1drv.ms/x/c/8dd2c5d0a467a39a/IQCp0TJlLQVoTbgVteIwn2fFAbSYv35ABYxVGW3GDX5d61c?e=ihMHpP'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, json, os, urllib.request
+          shared_url = os.environ['SHARED_URL']
+          output = 'Input RBI.xlsx'
+          app_id = '5cbed6ac-a083-4e14-b191-b4ba07653de2'
+          req = urllib.request.Request(
+              'https://api-badgerp.svc.ms/v1.0/token',
+              data=json.dumps({'appId': app_id}).encode(),
+              headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'},
+              method='POST')
+          with urllib.request.urlopen(req, timeout=30) as r:
+              badger = json.load(r).get('token')
+          if not badger:
+              raise RuntimeError('Failed to obtain Microsoft Badger token')
+          encoded = base64.urlsafe_b64encode(shared_url.encode()).decode().rstrip('=')
+          api = 'https://my.microsoftpersonalcontent.com/_api/v2.0/shares/u!' + encoded + '/driveitem?$select=id,name,size,file,parentReference,@content.downloadUrl'
+          req = urllib.request.Request(api, headers={'Authorization': f'Badger {badger}', 'Prefer': 'autoredeem', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+          with urllib.request.urlopen(req, timeout=30) as r:
+              item = json.load(r)
+          url = item.get('@content.downloadUrl')
+          if not url:
+              raise RuntimeError('OneDrive did not return @content.downloadUrl')
+          with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=120) as r, open(output, 'wb') as f:
+              while chunk := r.read(1024 * 1024):
+                  f.write(chunk)
+          size = os.path.getsize(output)
+          if size < 1000:
+              raise RuntimeError(f'Downloaded file is unexpectedly small: {size} bytes')
+          print(f'Downloaded {size:,} bytes')
+          PY
+
+      - name: Generate regional database
+        run: python sync_database.py
+
+      - name: Commit regional database
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.js data/ tools/sync_static.py sync_database.py index.html app.js
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Sync Static Equipment by Wilayah Kerja"
+            git push
+          fi
