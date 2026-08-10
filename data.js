@@ -1,27 +1,7 @@
-// DATABASE ASSET STATIC EQUIPMENT
-// Clean database layer.
-// Source of truth: Input RBI.xlsx (OneDrive, Zona 11).
-// Only records with Equipment Category = "Static" belong in ASSETS.
-// No RBI calculation is performed by this file. Risk 1AP/2AP/3AP values are stored as supplied by the source data.
+// AUTO-GENERATED. DO NOT EDIT MANUALLY.
+// Source: Asset Register Excel | Filter: Equipment Category = Static
+// This script performs NO RBI calculation.
 
-const ASSETS = [];
+const ASSETS = [{"tag":"","name":"","type":"","area":"","service":"","material":"","risk":"","risk1AP":"","risk2AP":"","risk3AP":"","damageMechanism":"","corrosionRate":"","currentThickness":"","rbiStatus":"","equipmentCategory":"Static"}];
 
 const INSPECTIONS = [];
-
-// Expected asset record structure:
-// {
-//   tag: "",
-//   name: "",
-//   type: "",
-//   area: "",
-//   service: "",
-//   material: "",
-//   risk: "",
-//   risk1AP: "",
-//   risk2AP: "",
-//   risk3AP: "",
-//   damageMechanism: "",
-//   corrosionRate: "",
-//   currentThickness: "",
-//   rbiStatus: ""
-// }
