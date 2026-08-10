@@ -94,29 +94,42 @@ def build_records(rows, headers):
     return assets, inspections
 
 
-def read_excel(path: Path):
-    """Find the real header row instead of assuming row 1 is the header.
+def find_header_in_sheet(ws):
+    category_aliases = {clean_header(a) for a in ALIASES["category"]}
+    for row_number, row in enumerate(ws.iter_rows(min_row=1, max_row=100, values_only=True), start=1):
+        row_values = list(row)
+        header_keys = {clean_header(v) for v in row_values if v is not None}
+        if category_aliases.intersection(header_keys):
+            return row_number, row_values
+    return None, None
 
-    Asset Register workbooks commonly have title/information rows above the
-    table. We scan the first 100 rows of every worksheet for Equipment Category.
+
+def read_excel(path: Path):
+    """Read the main Asset Register table.
+
+    Prefer the Detail worksheet because Rekap is a summary sheet and can contain
+    misleading Equipment Category values. Within Detail, find the real header
+    row by scanning the first 100 rows.
     """
     wb = load_workbook(path, read_only=True, data_only=True)
+
+    # 1) Prefer Detail explicitly.
+    preferred = next((ws for ws in wb.worksheets if clean_header(ws.title) == "detail"), None)
+    if preferred is not None:
+        row_number, headers = find_header_in_sheet(preferred)
+        if row_number is not None:
+            remaining = preferred.iter_rows(min_row=row_number + 1, values_only=True)
+            return list(remaining), headers, preferred.title
+
+    # 2) Fallback: find a worksheet containing Equipment Category.
     category_aliases = {clean_header(a) for a in ALIASES["category"]}
-
     for ws in wb.worksheets:
-        rows = ws.iter_rows(values_only=True)
-        buffered = []
-        for row_number, row in enumerate(rows, start=1):
-            row_values = list(row)
-            buffered.append(row_values)
-            if row_number > 100:
-                break
-
-            header_keys = {clean_header(v) for v in row_values if v is not None}
+        row_number, headers = find_header_in_sheet(ws)
+        if row_number is not None:
+            header_keys = {clean_header(v) for v in headers if v is not None}
             if category_aliases.intersection(header_keys):
-                # The row containing Equipment Category is the actual table header.
                 remaining = ws.iter_rows(min_row=row_number + 1, values_only=True)
-                return list(remaining), row_values, ws.title
+                return list(remaining), headers, ws.title
 
     raise RuntimeError(
         "Tidak ditemukan worksheet/baris header yang memiliki kolom Equipment Category "
