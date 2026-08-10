@@ -302,8 +302,85 @@ function renderAssetTable(list, page = 1) {
   const visible = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   $('assetCount').textContent = `${list.length.toLocaleString('id-ID')} asset — ${currentRegion || ''}`;
   if (!visible.length) { table.innerHTML = '<div class="empty">Tidak ada asset sesuai filter.</div>'; return; }
-  table.innerHTML = `<table><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  table.innerHTML = `<table class="asset-table"><thead><tr><th>Tag No.</th><th>Deskripsi Peralatan</th><th>Object Type</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.name || '-')}</td><td>${esc(x.objectType || '-')}</td><td>${esc(x.area || '-')}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td><td>${esc(integrityDisplay(x.integrityStatus))}</td><td>${esc(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
+  enableAssetColumnResize();
   table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderAssetTable(list, Number(btn.dataset.page))));
+}
+
+function enableAssetColumnResize() {
+  const table = document.querySelector('#assetTable table.asset-table');
+  if (!table || table.dataset.resizable === '1') return;
+  table.dataset.resizable = '1';
+  installAssetResizeStyles();
+  const headers = Array.from(table.querySelectorAll('thead th'));
+  const saved = JSON.parse(localStorage.getItem('assetTableColumnWidths') || '{}');
+  const defaults = [145, 390, 125, 220, 95, 145, 480];
+  const minWidths = [100, 220, 90, 150, 80, 110, 240];
+
+  headers.forEach((th, index) => {
+    const width = Number(saved[index]) || defaults[index];
+    setAssetColumnWidth(table, index, Math.max(minWidths[index], width));
+    th.classList.add('asset-resizable-header');
+    const handle = document.createElement('span');
+    handle.className = 'asset-column-resizer';
+    handle.title = 'Geser untuk memperbesar / memperkecil kolom';
+    th.appendChild(handle);
+    handle.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      handle.setPointerCapture?.(event.pointerId);
+      const startX = event.clientX;
+      const startWidth = th.getBoundingClientRect().width;
+      const onMove = moveEvent => {
+        const next = Math.max(minWidths[index], startWidth + moveEvent.clientX - startX);
+        setAssetColumnWidth(table, index, next);
+      };
+      const onUp = () => {
+        document.body.classList.remove('asset-column-resizing');
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        const widths = Array.from(table.querySelectorAll('thead th')).map(h => Math.round(h.getBoundingClientRect().width));
+        localStorage.setItem('assetTableColumnWidths', JSON.stringify(widths));
+      };
+      document.body.classList.add('asset-column-resizing');
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, { once: true });
+    });
+  });
+}
+
+function setAssetColumnWidth(table, index, width) {
+  const th = table.querySelectorAll('thead th')[index];
+  if (!th) return;
+  th.style.width = `${width}px`;
+  th.style.minWidth = `${width}px`;
+  th.style.maxWidth = `${width}px`;
+  table.querySelectorAll('tbody tr').forEach(row => {
+    const cell = row.children[index];
+    if (cell) {
+      cell.style.width = `${width}px`;
+      cell.style.minWidth = `${width}px`;
+      cell.style.maxWidth = `${width}px`;
+    }
+  });
+}
+
+function installAssetResizeStyles() {
+  if (document.getElementById('asset-resize-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'asset-resize-styles';
+  style.textContent = `
+    #assetTable { overflow-x: auto; }
+    #assetTable table.asset-table { table-layout: fixed; min-width: 1600px; }
+    #assetTable table.asset-table th,
+    #assetTable table.asset-table td { overflow-wrap: anywhere; vertical-align: top; }
+    #assetTable table.asset-table th { position: sticky; top: 0; z-index: 2; }
+    #assetTable .asset-resizable-header { position: sticky; }
+    #assetTable .asset-column-resizer { position:absolute; top:0; right:-3px; width:7px; height:100%; cursor:col-resize; z-index:5; }
+    #assetTable .asset-column-resizer:hover { background:rgba(23,105,213,.25); }
+    body.asset-column-resizing, body.asset-column-resizing * { cursor:col-resize !important; user-select:none !important; }
+  `;
+  document.head.appendChild(style);
 }
 
 function renderRbiTable(list, page = 1) {
