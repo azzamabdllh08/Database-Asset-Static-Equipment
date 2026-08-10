@@ -58,7 +58,12 @@
 
     <section id="inspection" class="page">
       <div class="panel">
-        <div class="section-head"><h2>Inspection History</h2></div>
+        <div class="section-head">
+          <h2>Inspection History by Year</h2>
+          <select id="inspectionYear" class="year-select"><option value="">All Years</option></select>
+        </div>
+        <p class="muted">Inspection report dikelompokkan berdasarkan tahun inspeksi. Pilih tahun untuk melihat detail report.</p>
+        <div id="inspectionYearSummary" class="year-grid"></div>
         <div id="inspectionTable"></div>
       </div>
     </section>
@@ -66,7 +71,7 @@
     <section id="rbi" class="page">
       <div class="panel">
         <div class="section-head"><h2>RBI Assessment</h2></div>
-        <div class="notice">Modul RBI akan menggunakan data asset, damage mechanism, thickness/corrosion dan consequence. Nilai RBI tidak akan dibuat secara asumsi.</div>
+        <div class="notice">Modul RBI menggunakan data assessment yang tersimpan. Nilai RBI tidak dihitung atau dibuat secara asumsi oleh dashboard.</div>
         <div id="rbiTable"></div>
       </div>
     </section>
