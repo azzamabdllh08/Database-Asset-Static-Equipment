@@ -10,9 +10,18 @@
     return match ? match[0] : 'Unknown';
   }
 
+  function getManifest() {
+    try {
+      return typeof MANIFEST !== 'undefined' ? MANIFEST : (window.MANIFEST || {});
+    } catch (_) {
+      return window.MANIFEST || {};
+    }
+  }
+
   function loadRegionIndex() {
     if (regionIndexPromise) return regionIndexPromise;
-    const regions = Array.isArray(MANIFEST?.regions) ? MANIFEST.regions : [];
+    const manifest = getManifest();
+    const regions = Array.isArray(manifest.regions) ? manifest.regions : [];
     regionIndexPromise = Promise.all(regions.map(async r => {
       try {
         const res = await fetch(`data/regions/${encodeURIComponent(r.slug)}.json`, { cache: 'no-store' });
@@ -65,11 +74,13 @@
     document.getElementById('inspectionAssetSearch').addEventListener('input', renderSelectedInspectionYear);
   }
 
-  function populateInspectionRegions(list) {
+  function populateInspectionRegions(list, preserveValue = '') {
     const select = document.getElementById('inspectionRegionFilter');
     if (!select) return;
+    const current = preserveValue || select.value || '';
     const regions = [...new Set(list.map(x => x.wilayahKerja).filter(Boolean))].sort((a,b) => a.localeCompare(b));
     select.innerHTML = '<option value="">All Wilayah Kerja</option>' + regions.map(v => `<option value="${escI(v)}">${escI(v)}</option>`).join('');
+    if (regions.includes(current)) select.value = current;
     updateInspectionLocations();
   }
 
@@ -78,11 +89,11 @@
     const location = document.getElementById('inspectionLocationFilter');
     if (!region || !location) return;
     const selected = region.value;
+    const current = location.value;
     const source = inspectionEnriched || [];
     const locations = [...new Set(source.filter(x => !selected || x.wilayahKerja === selected).map(x => x.location).filter(Boolean))].sort((a,b) => a.localeCompare(b));
-    location.disabled = !selected;
-    const current = location.value;
     location.innerHTML = '<option value="">All Location</option>' + locations.map(v => `<option value="${escI(v)}">${escI(v)}</option>`).join('');
+    location.disabled = !selected || !locations.length;
     if (locations.includes(current)) location.value = current;
   }
 
@@ -175,27 +186,30 @@
     document.head.appendChild(style);
   }
 
-  const originalRender = window.renderInspectionByYear;
   window.renderInspectionByYear = function(list, selectedYearValue = '') {
     injectInspectionControls();
     installStyles();
     inspectionEnriched = list || [];
+    const previousRegion = document.getElementById('inspectionRegionFilter')?.value || '';
+    const previousLocation = document.getElementById('inspectionLocationFilter')?.value || '';
     const yearSelect = document.getElementById('inspectionYear');
     const years = [...new Set(inspectionEnriched.map(x => inspectionYear(x.date)).filter(y => y !== 'Unknown'))].sort((a,b) => Number(b)-Number(a));
     yearSelect.innerHTML = '<option value="">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
     yearSelect.value = selectedYearValue || '';
     renderYearCards(inspectionEnriched, selectedYearValue || '');
-    populateInspectionRegions(inspectionEnriched);
+    populateInspectionRegions(inspectionEnriched, previousRegion);
+    const location = document.getElementById('inspectionLocationFilter');
+    if (location && previousLocation) location.value = previousLocation;
     renderSelectedInspectionYear();
 
-    if (inspectionEnriched.length && !regionIndexPromise) {
-      loadRegionIndex().then(index => {
-        inspectionEnriched = enrichInspections(inspectionEnriched, index);
-        renderYearCards(inspectionEnriched, selectedYear());
-        populateInspectionRegions(inspectionEnriched);
-        renderSelectedInspectionYear();
-      });
-    }
+    loadRegionIndex().then(index => {
+      if (!index.size) return;
+      const currentRegion = document.getElementById('inspectionRegionFilter')?.value || previousRegion;
+      inspectionEnriched = enrichInspections(inspectionEnriched, index);
+      renderYearCards(inspectionEnriched, selectedYear());
+      populateInspectionRegions(inspectionEnriched, currentRegion);
+      renderSelectedInspectionYear();
+    });
   };
 
   window.addEventListener('DOMContentLoaded', () => {
