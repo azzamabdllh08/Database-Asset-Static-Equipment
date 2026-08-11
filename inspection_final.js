@@ -6,6 +6,12 @@
 
   const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const yearOf = v => { const m = String(v ?? '').match(/(?:19|20)\d{2}/); return m ? m[0] : 'Unknown'; };
+  const formatDate = v => {
+    const s = String(v ?? '').trim();
+    if (!s) return '-';
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
+  };
 
   async function buildRegionIndex() {
     if (regionIndex.size) return;
@@ -101,7 +107,7 @@
     const status = document.getElementById('finalCount');
     if (status) status.textContent = `${list.length.toLocaleString('id-ID')} inspection`;
     if (!visible.length) { table.innerHTML = `<div class="empty">Tidak ada inspection untuk ${y || 'filter'} yang dipilih.</div>`; return; }
-    table.innerHTML = `<div class="report-heading"><h3>Inspection ${y || 'All Years'}</h3><span class="badge">${list.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Wilayah Kerja</th><th>Location</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x=>`<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.wilayahKerja||'-')}</td><td>${esc(x.location||'-')}</td><td>${esc(x.date||'-')}</td><td>${esc(x.method||'-')}</td><td>${esc(x.finding||'-')}</td><td>${esc(x.remarks||'-')}</td></tr>`).join('')}</tbody></table>${pages>1?`<div class="pagination"><span>Showing ${visible.length} of ${list.length}</span></div>`:''}`;
+    table.innerHTML = `<div class="report-heading"><h3>Inspection ${y || 'All Years'}</h3><span class="badge">${list.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Wilayah Kerja</th><th>Location</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x=>`<tr><td><b>${esc(x.tag)}</b></td><td>${esc(x.wilayahKerja||'-')}</td><td>${esc(x.location||'-')}</td><td>${formatDate(x.date)}</td><td>${esc(x.method||'-')}</td><td>${esc(x.finding||'-')}</td><td>${esc(x.remarks||'-')}</td></tr>`).join('')}</tbody></table>${pages>1?`<div class="pagination"><span>Showing ${visible.length} of ${list.length}</span></div>`:''}`;
   }
 
   async function initialize() {
