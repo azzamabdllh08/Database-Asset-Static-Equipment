@@ -19,4 +19,10 @@
     table.innerHTML = `<div class="report-heading"><h3>RBI — ${esc(currentRegion || '')}</h3><span class="badge">${list.length.toLocaleString('id-ID')} asset</span></div><table><thead><tr><th>Tag No.</th><th>Damage Mechanism</th><th>Last Inspection Date</th><th>Inspection Due Date</th><th>Risk 1AP</th></tr></thead><tbody>${visible.map(x => `<tr><td>${esc(x.tag)}</td><td>${esc(x.damageMechanism || '-')}</td><td>${esc(formatRbiDate(x.lastInspectionDate))}</td><td>${esc(formatRbiDate(x.inspectionDueDate))}</td><td><span class="risk">${esc(x.risk1AP || '-')}</span></td></tr>`).join('')}</tbody></table>${paginationHtml(page,totalPages)}`;
     table.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderRbiTable(list, Number(btn.dataset.page))));
   };
+
+  // Load the inspection year/region/location filter patch without changing index.html.
+  const script = document.createElement('script');
+  script.src = 'inspection_filter.js?v=1';
+  script.async = false;
+  document.head.appendChild(script);
 })();
