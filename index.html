@@ -21,16 +21,7 @@
   <header class="topbar"><div class="brand">▣ <span id="brand">DATABASE ASSET STATIC EQUIPMENT</span></div><div class="subtitle">Asset Integrity & RBI</div></header>
   <nav class="nav"><button class="active" data-page="dashboard">Dashboard</button><button data-page="assets">Asset Register</button><button data-page="inspection">Inspection</button><button data-page="rbi">RBI</button><button data-page="reports">Report</button></nav>
   <main>
-    <section id="dashboard" class="page active">
-      <div class="hero"><div><p class="eyebrow">STATIC EQUIPMENT DATABASE</p><h1>Database Asset Static Equipment</h1><p class="muted">Central database untuk asset register, inspection history, damage mechanism, corrosion dan RBI.</p></div></div>
-      <div class="cards"><div class="card"><b id="totalAssets">0</b><span>Total Asset</span></div><div class="card"><b id="totalInspections">0</b><span>Inspection</span></div><div class="card"><b id="totalRbi">0</b><span>RBI Assessment</span></div><div class="card"><b id="highRisk">0</b><span>High Risk</span></div></div>
-      <div class="grid">
-        <div class="panel"><h3>Asset by Wilayah Kerja</h3><div id="regionChart"></div></div>
-        <div class="panel"><h3>Asset by Object Type</h3><div id="typeChart"></div></div>
-        <div class="risk-overview"><div class="panel risk-matrix-panel" id="riskMatrixPanel"><div class="section-head"><h3>RBI Risk Matrix 1AP</h3><span class="badge">Risk 1AP</span></div><div id="riskMatrix"></div><div id="riskSummary" class="legacy-risk-summary"></div></div><div class="panel risk-diagram-panel"><div class="section-head"><h3>Diagram Risiko 1AP</h3><span id="riskTotalBadge" class="badge">0 asset</span></div><div id="riskDiagram"></div></div></div>
-        <div class="panel wide"><h3>Recent Assets</h3><div id="recentAssets"></div></div>
-      </div>
-    </section>
+    <section id="dashboard" class="page active"><div class="hero"><div><p class="eyebrow">STATIC EQUIPMENT DATABASE</p><h1>Database Asset Static Equipment</h1><p class="muted">Central database untuk asset register, inspection history, damage mechanism, corrosion dan RBI.</p></div></div><div class="cards"><div class="card"><b id="totalAssets">0</b><span>Total Asset</span></div><div class="card"><b id="totalInspections">0</b><span>Inspection</span></div><div class="card"><b id="totalRbi">0</b><span>RBI Assessment</span></div><div class="card"><b id="highRisk">0</b><span>High Risk</span></div></div><div class="grid"><div class="panel"><h3>Asset by Wilayah Kerja</h3><div id="regionChart"></div></div><div class="panel"><h3>Asset by Object Type</h3><div id="typeChart"></div></div><div class="risk-overview"><div class="panel risk-matrix-panel" id="riskMatrixPanel"><div class="section-head"><h3>RBI Risk Matrix 1AP</h3><span class="badge">Risk 1AP</span></div><div id="riskMatrix"></div><div id="riskSummary" class="legacy-risk-summary"></div></div><div class="panel risk-diagram-panel"><div class="section-head"><h3>Diagram Risiko 1AP</h3><span id="riskTotalBadge" class="badge">0 asset</span></div><div id="riskDiagram"></div></div></div><div class="panel wide"><h3>Recent Assets</h3><div id="recentAssets"></div></div></div></section>
     <section id="assets" class="page"><div class="panel"><div class="section-head"><h2>Asset Register</h2><span id="assetCount" class="badge">Pilih Wilayah Kerja</span></div><div class="filters"><select id="regionFilter"><option value="">Pilih Wilayah Kerja</option></select><select id="locationFilter" disabled><option value="">All Location</option></select><input id="assetSearch" placeholder="Search Tag No / Deskripsi Peralatan" disabled><select id="typeFilter" disabled><option value="">All Object Type</option></select></div><div id="assetTable"><div class="empty">Pilih Wilayah Kerja untuk memuat asset.</div></div></div></section>
     <section id="inspection" class="page"><div class="panel"><div class="section-head"><h2>Inspection History by Year</h2><select id="inspectionYear" class="year-select"><option value="">All Years</option></select></div><p class="muted">Inspection report dikelompokkan berdasarkan tahun inspeksi. Data inspection dimuat hanya saat tab ini dibuka.</p><div id="inspectionYearSummary" class="year-grid"></div><div id="inspectionTable"><div class="empty">Buka tab Inspection untuk memuat data.</div></div></div></section>
     <section id="rbi" class="page"><div class="panel"><div class="section-head"><h2>RBI Assessment</h2></div><div class="notice">Modul RBI menggunakan data assessment yang tersimpan. Nilai RBI tidak dihitung atau dibuat secara asumsi oleh dashboard.</div><div id="rbiTable"><div class="empty">Pilih modul RBI untuk memuat data.</div></div></div></section>
@@ -44,5 +35,6 @@
   <script src="rbi_patch.js?v=2"></script>
   <script src="dashboard_filter.js?v=5"></script>
   <script src="rbi_direct_filter.js?v=3"></script>
+  <script src="rbi_layout_patch.js?v=1"></script>
 </body>
 </html>
