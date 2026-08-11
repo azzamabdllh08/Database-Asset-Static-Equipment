@@ -38,11 +38,7 @@
   function enrichInspections(list, index) {
     return list.map(item => {
       const found = index.get(String(item.tag ?? '').trim());
-      return {
-        ...item,
-        wilayahKerja: found?.wilayahKerja || '',
-        location: found?.location || ''
-      };
+      return { ...item, wilayahKerja: found?.wilayahKerja || '', location: found?.location || '' };
     });
   }
 
@@ -108,28 +104,45 @@
     });
   }
 
+  function renderYearCards(list, selectedYearValue) {
+    const summary = document.getElementById('inspectionYearSummary');
+    if (!summary) return;
+    const grouped = list.reduce((m, item) => {
+      const year = inspectionYear(item.date);
+      (m[year] ||= []).push(item);
+      return m;
+    }, {});
+    const years = Object.keys(grouped).filter(y => y !== 'Unknown').sort((a,b) => Number(b) - Number(a));
+    summary.innerHTML = years.length
+      ? years.map(year => `<button class="year-card ${selectedYearValue === year ? 'selected' : ''}" data-year="${year}"><b>${year}</b><span>${grouped[year].length.toLocaleString('id-ID')} inspection</span><small>View report →</small></button>`).join('')
+      : '<div class="empty">Tahun inspeksi belum tersedia.</div>';
+
+    summary.querySelectorAll('.year-card').forEach(card => card.addEventListener('click', () => {
+      const year = card.dataset.year;
+      const yearSelect = document.getElementById('inspectionYear');
+      if (yearSelect) yearSelect.value = year;
+      renderYearCards(list, year);
+      renderSelectedInspectionYear();
+      document.getElementById('inspectionFilters')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }));
+  }
+
   function renderInspectionTable(list, year) {
+    renderInspectionTablePage(list, year, 1);
+  }
+
+  function renderInspectionTablePage(list, year, page) {
     const table = document.getElementById('inspectionTable');
     if (!table) return;
     const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE_INSPECTION));
-    const visible = list.slice(0, PAGE_SIZE_INSPECTION);
+    page = Math.min(Math.max(1, page), totalPages);
+    const visible = list.slice((page - 1) * PAGE_SIZE_INSPECTION, page * PAGE_SIZE_INSPECTION);
     const status = document.getElementById('inspectionFilterStatus');
     if (status) status.textContent = `${list.length.toLocaleString('id-ID')} inspection`;
     if (!visible.length) {
       table.innerHTML = '<div class="empty">Tidak ada asset/inspection sesuai filter.</div>';
       return;
     }
-    table.innerHTML = `<div class="report-heading"><h3>Inspection ${year || 'All Years'}</h3><span class="badge">${list.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Wilayah Kerja</th><th>Location</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${escI(x.tag)}</b></td><td>${escI(x.wilayahKerja || '-')}</td><td>${escI(x.location || '-')}</td><td>${escI(typeof formatInspectionDate === 'function' ? formatInspectionDate(x.date) : x.date)}</td><td>${escI(x.method || '-')}</td><td>${escI(x.finding || '-')}</td><td>${escI(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationInspection(list, year)}`;
-    table.querySelectorAll('[data-inspection-page]').forEach(btn => btn.addEventListener('click', () => renderInspectionTablePage(list, year, Number(btn.dataset.inspectionPage))));
-  }
-
-  function renderInspectionTablePage(list, year, page) {
-    const table = document.getElementById('inspectionTable');
-    const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE_INSPECTION));
-    page = Math.min(Math.max(1, page), totalPages);
-    const visible = list.slice((page - 1) * PAGE_SIZE_INSPECTION, page * PAGE_SIZE_INSPECTION);
-    const status = document.getElementById('inspectionFilterStatus');
-    if (status) status.textContent = `${list.length.toLocaleString('id-ID')} inspection`;
     table.innerHTML = `<div class="report-heading"><h3>Inspection ${year || 'All Years'}</h3><span class="badge">${list.length.toLocaleString('id-ID')} inspection</span></div><table><thead><tr><th>Tag No.</th><th>Wilayah Kerja</th><th>Location</th><th>Date</th><th>Method</th><th>Finding</th><th>Remarks</th></tr></thead><tbody>${visible.map(x => `<tr><td><b>${escI(x.tag)}</b></td><td>${escI(x.wilayahKerja || '-')}</td><td>${escI(x.location || '-')}</td><td>${escI(typeof formatInspectionDate === 'function' ? formatInspectionDate(x.date) : x.date)}</td><td>${escI(x.method || '-')}</td><td>${escI(x.finding || '-')}</td><td>${escI(x.remarks || '-')}</td></tr>`).join('')}</tbody></table>${paginationInspection(list, year, page)}`;
     table.querySelectorAll('[data-inspection-page]').forEach(btn => btn.addEventListener('click', () => renderInspectionTablePage(list, year, Number(btn.dataset.inspectionPage))));
   }
@@ -163,19 +176,22 @@
   }
 
   const originalRender = window.renderInspectionByYear;
-  window.renderInspectionByYear = function(list, selectedYear = '') {
+  window.renderInspectionByYear = function(list, selectedYearValue = '') {
     injectInspectionControls();
     installStyles();
     inspectionEnriched = list || [];
-    populateInspectionRegions(inspectionEnriched);
     const yearSelect = document.getElementById('inspectionYear');
     const years = [...new Set(inspectionEnriched.map(x => inspectionYear(x.date)).filter(y => y !== 'Unknown'))].sort((a,b) => Number(b)-Number(a));
     yearSelect.innerHTML = '<option value="">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-    yearSelect.value = selectedYear || '';
+    yearSelect.value = selectedYearValue || '';
+    renderYearCards(inspectionEnriched, selectedYearValue || '');
+    populateInspectionRegions(inspectionEnriched);
     renderSelectedInspectionYear();
+
     if (inspectionEnriched.length && !regionIndexPromise) {
       loadRegionIndex().then(index => {
         inspectionEnriched = enrichInspections(inspectionEnriched, index);
+        renderYearCards(inspectionEnriched, selectedYear());
         populateInspectionRegions(inspectionEnriched);
         renderSelectedInspectionYear();
       });
@@ -184,6 +200,9 @@
 
   window.addEventListener('DOMContentLoaded', () => {
     const yearSelect = document.getElementById('inspectionYear');
-    if (yearSelect) yearSelect.addEventListener('change', () => renderSelectedInspectionYear());
+    if (yearSelect) yearSelect.addEventListener('change', () => {
+      renderYearCards(inspectionEnriched || [], selectedYear());
+      renderSelectedInspectionYear();
+    });
   });
 })();
