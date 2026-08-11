@@ -88,7 +88,7 @@
     locationSelect.disabled = true;
 
     try {
-      const res = await fetch(`data/regions/${encodeURIComponent(meta.slug)}.json`, { cache: 'no-store' });
+      const res = await fetch(`data/regions/${encodeURIComponent(meta.slug)}.json?filter=1`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`Region data HTTP ${res.status}`);
       const data = await res.json();
       state.regionAssets = Array.isArray(data.assets) ? data.assets : [];
@@ -145,8 +145,11 @@
   }
 
   function initDashboardFilters(attempt = 0) {
-    if (typeof MANIFEST === 'undefined' || typeof renderRiskMatrix !== 'function' || !document.getElementById('riskMatrix')) {
-      if (attempt < 50) setTimeout(() => initDashboardFilters(attempt + 1), 100);
+    // MANIFEST is declared in app.js as null until data/manifest.json finishes loading.
+    // Do not initialise while it is still null; otherwise the dropdown gets created with
+    // only "All Wilayah Kerja" and the matrix is temporarily rendered as 0 asset.
+    if (!MANIFEST || typeof renderRiskMatrix !== 'function' || !document.getElementById('riskMatrix')) {
+      if (attempt < 100) setTimeout(() => initDashboardFilters(attempt + 1), 100);
       return;
     }
     if (!injectControls()) return;
