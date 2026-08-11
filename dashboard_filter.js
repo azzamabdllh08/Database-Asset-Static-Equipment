@@ -1,7 +1,7 @@
 (() => {
   const state = { regionAssets: [], regionName: '', regionSlug: '' };
 
-  const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
+  const esc = value => String(value ?? '').replace(/[&<>'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
 
   function riskCountsFor(list) {
     const counts = {};
@@ -145,9 +145,6 @@
   }
 
   function initDashboardFilters(attempt = 0) {
-    // MANIFEST is declared in app.js as null until data/manifest.json finishes loading.
-    // Do not initialise while it is still null; otherwise the dropdown gets created with
-    // only "All Wilayah Kerja" and the matrix is temporarily rendered as 0 asset.
     if (!MANIFEST || typeof renderRiskMatrix !== 'function' || !document.getElementById('riskMatrix')) {
       if (attempt < 100) setTimeout(() => initDashboardFilters(attempt + 1), 100);
       return;
@@ -155,6 +152,42 @@
     if (!injectControls()) return;
     updateSelectedRegionView();
   }
+
+  /* Inspection History -> Report navigation.
+   * This intentionally only handles navigation/selection for now. The actual Report
+   * database URL can be connected later when its OneDrive location is finalized.
+   */
+  function openYearReport(year) {
+    const pages = document.querySelectorAll('.page');
+    const navButtons = document.querySelectorAll('.nav button');
+    pages.forEach(page => page.classList.toggle('active', page.id === 'reports'));
+    navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.page === 'reports'));
+
+    const reportPage = document.getElementById('reports');
+    const title = reportPage?.querySelector('h2');
+    if (title) title.textContent = year ? `Report ${year}` : 'Report';
+
+    const note = reportPage?.querySelector('.report-selection-note');
+    if (note) note.textContent = year
+      ? `Tahun report yang dipilih: ${year}. Database Report/OneDrive belum dihubungkan.`
+      : 'Folder Report akan dihubungkan ke OneDrive setelah struktur database dan link final ditetapkan.';
+
+    const link = document.getElementById('reportLink');
+    const base = window.CONFIG?.reportUrl || '';
+    if (link && base) {
+      link.href = `${base}${base.includes('?') ? '&' : '?'}year=${encodeURIComponent(year || '')}`;
+      link.classList.remove('disabled');
+      link.removeAttribute('aria-disabled');
+    }
+  }
+
+  document.addEventListener('click', event => {
+    const card = event.target.closest('.year-card');
+    if (card) {
+      event.preventDefault();
+      openYearReport(card.dataset.year || '');
+    }
+  });
 
   window.addEventListener('DOMContentLoaded', () => initDashboardFilters());
 })();
