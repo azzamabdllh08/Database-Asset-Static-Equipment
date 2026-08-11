@@ -15,7 +15,6 @@ ALIASES = {
     "wilayahKerja": ["Wilayah Kerja", "Wilayah", "Working Area", "Work Area"],
     "tag": ["Tag No", "Tag No.", "Tag Number", "Equipment Tag", "Tag", "Equipment No"],
     "name": ["Deskripsi Peralatan", "Equipment Description", "Description", "Equipment Name", "Equipment", "Name"],
-    # Object Type dashboard must use Object Type SHU from the Excel first.
     "objectType": ["Object Type SHU", "ObjectType SHU", "Object Type", "ObjectType"],
     "type": ["Object Type SHU", "ObjectType SHU", "Object Type", "ObjectType", "Equipment Type", "Type", "Equipment Type Description"],
     "area": ["Area", "Location", "Plant Area", "Unit", "Zone"],
@@ -36,6 +35,11 @@ ALIASES = {
     "remarks": ["Tindak Lanjut", "Tindak lanjut", "Follow Up", "Follow-up", "Remarks", "Remark", "Inspection Remarks", "Notes"],
 }
 
+# The source workbook uses fixed Excel columns for the RBI dates.
+# AA = 27th column -> zero-based index 26; AB = 28th column -> zero-based index 27.
+LAST_INSPECTION_COL_INDEX = 26
+INSPECTION_DUE_COL_INDEX = 27
+
 
 def clean_header(value):
     if value is None:
@@ -49,6 +53,10 @@ def value_for(row, header_map, aliases):
         if key in header_map:
             return row[header_map[key]]
     return None
+
+
+def value_at_column(row, index):
+    return row[index] if len(row) > index else None
 
 
 def serialise(value):
@@ -98,6 +106,10 @@ def build_records(rows, headers):
             continue
         seen_tags.add(tag_key)
 
+        # AA and AB are the authoritative Last Inspection Date and Inspection Due Date.
+        last_inspection_date = serialise(value_at_column(row, LAST_INSPECTION_COL_INDEX))
+        inspection_due_date = serialise(value_at_column(row, INSPECTION_DUE_COL_INDEX))
+
         asset = {
             "wilayahKerja": serialise(value_for(row, header_map, ALIASES["wilayahKerja"])) or "Unknown",
             "tag": tag,
@@ -116,6 +128,8 @@ def build_records(rows, headers):
             "corrosionRate": serialise(value_for(row, header_map, ALIASES["corrosionRate"])),
             "currentThickness": serialise(value_for(row, header_map, ALIASES["currentThickness"])),
             "rbiStatus": serialise(value_for(row, header_map, ALIASES["rbiStatus"])),
+            "lastInspectionDate": last_inspection_date,
+            "inspectionDueDate": inspection_due_date,
             "equipmentCategory": "Static",
             "remarks": "",
         }
@@ -289,10 +303,12 @@ def main():
     print(f"Inspection records: {len(inspections):,}")
     print(f"Wilayah Kerja: {len(set(str(x.get('wilayahKerja') or 'Unknown') for x in assets))}")
     print(f"Assets with remarks: {sum(1 for x in assets if x.get('remarks')):,}")
+    print(f"Assets with last inspection date: {sum(1 for x in assets if x.get('lastInspectionDate')):,}")
+    print(f"Assets with inspection due date: {sum(1 for x in assets if x.get('inspectionDueDate')):,}")
     print(f"Database: {output}")
 
     if args.push:
-        git_push(repo, "Sync Object Type from Object Type SHU")
+        git_push(repo, "Sync RBI inspection dates from Excel AA AB")
         print("Push ke GitHub selesai.")
 
 
