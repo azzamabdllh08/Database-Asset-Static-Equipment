@@ -37,7 +37,14 @@
     <section id="assets" class="page"><div class="panel"><div class="section-head"><h2>Asset Register</h2><span id="assetCount" class="badge">Pilih Wilayah Kerja</span></div><div class="filters"><select id="regionFilter"><option value="">Pilih Wilayah Kerja</option></select><select id="locationFilter" disabled><option value="">All Location</option></select><input id="assetSearch" placeholder="Search Tag No / Deskripsi Peralatan" disabled><select id="typeFilter" disabled><option value="">All Object Type</option></select></div><div id="assetTable"><div class="empty">Pilih Wilayah Kerja untuk memuat asset.</div></div></div></section>
     <section id="inspection" class="page"><div class="panel"><div class="section-head"><h2>Inspection History by Year</h2><select id="inspectionYear" class="year-select"><option value="">All Years</option></select></div><p class="muted">Inspection report dikelompokkan berdasarkan tahun inspeksi. Data inspection dimuat hanya saat tab ini dibuka.</p><div id="inspectionYearSummary" class="year-grid"></div><div id="inspectionTable"><div class="empty">Buka tab Inspection untuk memuat data.</div></div></div></section>
     <section id="rbi" class="page"><div class="panel"><div class="section-head"><h2>RBI Assessment</h2></div><div class="notice">Modul RBI menggunakan data assessment yang tersimpan. Nilai RBI tidak dihitung atau dibuat secara asumsi oleh dashboard.</div><div id="rbiTable"><div class="empty">Pilih modul RBI untuk memuat data.</div></div></div></section>
-    <section id="reports" class="page"><div class="panel"><h2>Report</h2><p class="muted">Folder Report akan dihubungkan ke OneDrive setelah struktur database dan link final ditetapkan.</p><a id="reportLink" class="report-button" href="#" target="_blank" rel="noopener">Open Report</a></div></section>
+    <section id="reports" class="page">
+      <div class="panel">
+        <div class="section-head"><h2>RBI Assessment Report</h2><span class="badge">2025</span></div>
+        <h3>Report 2025</h3>
+        <p class="muted">Dokumen ini merupakan report hasil <b>RBI Assessment</b>, bukan report inspeksi. Report akan dibuka dari lokasi dokumen RBI Assessment di OneDrive.</p>
+        <a id="reportLink" class="report-button" href="#" target="_blank" rel="noopener">Open RBI Assessment Report</a>
+      </div>
+    </section>
   </main>
   <script src="config.js"></script>
   <script src="app.js"></script>
