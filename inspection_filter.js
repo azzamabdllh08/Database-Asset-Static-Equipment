@@ -74,6 +74,12 @@
     document.getElementById('inspectionAssetSearch').addEventListener('input', renderSelectedInspectionYear);
   }
 
+  // Region dropdown must be based on the currently selected inspection year.
+  function inspectionDataForFilterOptions() {
+    const year = selectedYear();
+    return (inspectionEnriched || []).filter(x => !year || inspectionYear(x.date) === year);
+  }
+
   function populateInspectionRegions(list, preserveValue = '') {
     const select = document.getElementById('inspectionRegionFilter');
     if (!select) return;
@@ -81,6 +87,7 @@
     const regions = [...new Set(list.map(x => x.wilayahKerja).filter(Boolean))].sort((a,b) => a.localeCompare(b));
     select.innerHTML = '<option value="">All Wilayah Kerja</option>' + regions.map(v => `<option value="${escI(v)}">${escI(v)}</option>`).join('');
     if (regions.includes(current)) select.value = current;
+    else select.value = '';
     updateInspectionLocations();
   }
 
@@ -90,11 +97,16 @@
     if (!region || !location) return;
     const selected = region.value;
     const current = location.value;
-    const source = inspectionEnriched || [];
-    const locations = [...new Set(source.filter(x => !selected || x.wilayahKerja === selected).map(x => x.location).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    const source = inspectionDataForFilterOptions();
+    const locations = [...new Set(source
+      .filter(x => !selected || x.wilayahKerja === selected)
+      .map(x => x.location)
+      .filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b));
     location.innerHTML = '<option value="">All Location</option>' + locations.map(v => `<option value="${escI(v)}">${escI(v)}</option>`).join('');
     location.disabled = !selected || !locations.length;
     if (locations.includes(current)) location.value = current;
+    else location.value = '';
   }
 
   function selectedYear() {
@@ -132,10 +144,31 @@
       const year = card.dataset.year;
       const yearSelect = document.getElementById('inspectionYear');
       if (yearSelect) yearSelect.value = year;
+      updateInspectionFilterOptions();
       renderYearCards(list, year);
       renderSelectedInspectionYear();
       document.getElementById('inspectionFilters')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }));
+  }
+
+  function updateInspectionFilterOptions() {
+    if (!inspectionEnriched) return;
+    const currentRegion = document.getElementById('inspectionRegionFilter')?.value || '';
+    const currentLocation = document.getElementById('inspectionLocationFilter')?.value || '';
+    const source = inspectionDataForFilterOptions();
+    const regions = [...new Set(source.map(x => x.wilayahKerja).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+    const regionSelect = document.getElementById('inspectionRegionFilter');
+    if (regionSelect) {
+      regionSelect.innerHTML = '<option value="">All Wilayah Kerja</option>' + regions.map(v => `<option value="${escI(v)}">${escI(v)}</option>`).join('');
+      if (regions.includes(currentRegion)) regionSelect.value = currentRegion;
+      else regionSelect.value = '';
+    }
+    updateInspectionLocations();
+    const locationSelect = document.getElementById('inspectionLocationFilter');
+    if (locationSelect && currentLocation) {
+      const locations = [...locationSelect.options].map(o => o.value);
+      if (locations.includes(currentLocation)) locationSelect.value = currentLocation;
+    }
   }
 
   function renderInspectionTable(list, year) {
@@ -197,17 +230,26 @@
     yearSelect.innerHTML = '<option value="">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
     yearSelect.value = selectedYearValue || '';
     renderYearCards(inspectionEnriched, selectedYearValue || '');
-    populateInspectionRegions(inspectionEnriched, previousRegion);
-    const location = document.getElementById('inspectionLocationFilter');
-    if (location && previousLocation) location.value = previousLocation;
+    updateInspectionFilterOptions();
+    if (previousRegion) document.getElementById('inspectionRegionFilter').value = previousRegion;
+    if (previousLocation) document.getElementById('inspectionLocationFilter').value = previousLocation;
+    updateInspectionLocations();
     renderSelectedInspectionYear();
 
     loadRegionIndex().then(index => {
       if (!index.size) return;
       const currentRegion = document.getElementById('inspectionRegionFilter')?.value || previousRegion;
+      const currentLocation = document.getElementById('inspectionLocationFilter')?.value || previousLocation;
       inspectionEnriched = enrichInspections(inspectionEnriched, index);
       renderYearCards(inspectionEnriched, selectedYear());
-      populateInspectionRegions(inspectionEnriched, currentRegion);
+      updateInspectionFilterOptions();
+      if (currentRegion && [...document.getElementById('inspectionRegionFilter').options].some(o => o.value === currentRegion)) {
+        document.getElementById('inspectionRegionFilter').value = currentRegion;
+      }
+      updateInspectionLocations();
+      if (currentLocation && [...document.getElementById('inspectionLocationFilter').options].some(o => o.value === currentLocation)) {
+        document.getElementById('inspectionLocationFilter').value = currentLocation;
+      }
       renderSelectedInspectionYear();
     });
   };
@@ -215,6 +257,7 @@
   window.addEventListener('DOMContentLoaded', () => {
     const yearSelect = document.getElementById('inspectionYear');
     if (yearSelect) yearSelect.addEventListener('change', () => {
+      updateInspectionFilterOptions();
       renderYearCards(inspectionEnriched || [], selectedYear());
       renderSelectedInspectionYear();
     });
