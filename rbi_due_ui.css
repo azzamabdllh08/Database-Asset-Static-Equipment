@@ -1,0 +1,22 @@
+/* RBI due table: fit desktop viewport without horizontal scrolling */
+#rbi .rbi-table-wrap{overflow:hidden!important;width:100%;}
+#rbi .rbi-table{width:100%!important;table-layout:fixed!important;font-size:10px!important;}
+#rbi .rbi-table th,#rbi .rbi-table td{white-space:normal!important;word-break:break-word;overflow-wrap:anywhere;padding:8px 6px!important;line-height:1.25;vertical-align:middle;}
+#rbi .rbi-table .c-no{width:3.5%}.rbi-table .c-tag{width:11%}.rbi-table .c-name{width:24%}.rbi-table .c-region{width:9%}.rbi-table .c-location{width:15%}.rbi-table .c-risk{width:7%}.rbi-table .c-integrity{width:9%}.rbi-table .c-last{width:9%}.rbi-table .c-due{width:9%}.rbi-table .c-action{width:4.5%}
+#rbi .rbi-table td:nth-child(2){color:#1269cf;font-weight:700}
+#rbi .rbi-table .risk-tag{font-size:9px;padding:3px 7px;white-space:nowrap!important}
+#rbi .rbi-table .integrity{font-size:9px;padding:3px 7px;white-space:nowrap!important}
+#rbi .rbi-table .view-btn{width:26px;height:26px;border:1px solid #d4dee8;background:#fff;border-radius:5px;color:#1269cf;cursor:pointer}
+#rbi .due-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:10px;font-size:10px}
+#rbi .pager-buttons{display:flex;align-items:center;gap:4px}
+#rbi .pager-buttons button{min-width:30px;height:29px;padding:0 7px;border:1px solid #ccd8e4;background:#fff;border-radius:5px;color:#173b60;cursor:pointer}
+#rbi .pager-buttons button.active{background:#0867cf;color:#fff;border-color:#0867cf;font-weight:700}
+#rbi .pager-buttons button:disabled{opacity:.4;cursor:not-allowed}
+#rbi .pager-more{padding:0 3px;color:#718398}
+#rbi .rbi-due-filter-panel{display:none;align-items:end;gap:10px;padding:10px 12px;margin:-2px 0 10px;border:1px solid #e0e6ed;border-radius:7px;background:#f8fafc}
+#rbi .rbi-due-filter-panel.open{display:flex}
+#rbi .rbi-due-filter-panel label{display:flex;flex-direction:column;gap:5px;font-size:10px;font-weight:700;color:#40556a}
+#rbi .rbi-due-filter-panel select{height:32px;min-width:145px;border:1px solid #ccd8e4;border-radius:5px;background:#fff;padding:0 8px;font-size:11px}
+#rbi .rbi-due-filter-panel button{height:32px;border:1px solid #ccd8e4;background:#fff;border-radius:5px;padding:0 10px;cursor:pointer;font-size:11px}
+@media(max-width:900px){#rbi .rbi-table{font-size:9px!important}#rbi .rbi-table th,#rbi .rbi-table td{padding:6px 4px!important}.rbi-table .c-name{width:22%}.rbi-table .c-location{width:13%}.rbi-table .c-tag{width:10%}}
+@media(max-width:650px){#rbi .rbi-table-wrap{overflow-x:auto!important}#rbi .rbi-table{min-width:850px!important;table-layout:auto!important}.rbi-due-filter-panel.open{flex-wrap:wrap}}
