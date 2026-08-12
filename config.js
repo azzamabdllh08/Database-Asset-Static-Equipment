@@ -10,4 +10,9 @@ const CONFIG = {
   const compact=document.createElement('link');compact.rel='stylesheet';compact.href='dashboard_compact.css';document.head.appendChild(compact);
   const js=document.createElement('script');js.src='dashboard_ui.js';document.head.appendChild(js);
   const inspection=document.createElement('script');inspection.src='inspection_ui.js';document.head.appendChild(inspection);
+  // Excel export library + RBI workbook exporter
+  const xlsx=document.createElement('script');
+  xlsx.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+  xlsx.onload=()=>{const exp=document.createElement('script');exp.src='xlsx-export.js';document.head.appendChild(exp)};
+  document.head.appendChild(xlsx);
 })();
