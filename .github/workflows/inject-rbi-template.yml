@@ -1,0 +1,31 @@
+name: Inject RBI Template
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  inject:
+    if: github.event.head_commit.message != 'Inject RBI template loader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject RBI template script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          tag='<script src="rbi_template.js"></script>'
+          if tag not in s:
+              s=s.replace('</body>', tag+'\n</body>')
+              p.write_text(s)
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Inject RBI template loader'
+          git push
