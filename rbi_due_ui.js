@@ -1,0 +1,147 @@
+(()=>{
+  const PAGE_SIZE=5;
+  let page=1;
+  let allAssets=[];
+  let loaded=false;
+  let applying=false;
+
+  const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=v=>Number(v||0).toLocaleString('id-ID');
+  const date=v=>{const m=String(v||'').match(/(19|20)\d{2}-\d{2}-\d{2}/);return m?`${m[3]}/${m[2]}/${m[1]}`:'-'};
+  const today=new Date('2026-08-12T00:00:00');
+
+  async function loadAssets(){
+    if(loaded)return;
+    const m=await (await fetch('data/manifest.json',{cache:'no-store'})).json();
+    allAssets=(await Promise.all((m.regions||[]).map(async r=>{
+      try{return (await (await fetch(`data/regions/${encodeURIComponent(r.slug)}.json`,{cache:'no-store'})).json()).assets||[]}catch(e){return []}
+    }))).flat();
+    loaded=true;
+  }
+
+  function dueKey(){
+    const h=document.querySelector('#rbi .rbi-table-head h2')?.textContent||'';
+    const m=h.match(/(Overdue|20\d{2}|>\s*2030)/i);
+    return m?m[1].replace(/\s+/g,' '):'2026';
+  }
+
+  function getBaseList(){
+    const region=document.getElementById('rbiRefRegion')?.value||'';
+    const loc=document.getElementById('rbiRefLocation')?.value||'';
+    const q=(document.getElementById('rbiRefSearch')?.value||'').toLowerCase().trim();
+    let list=allAssets.slice();
+    if(region)list=list.filter(a=>(a.wilayahKerja||'')===region);
+    if(loc)list=list.filter(a=>(a.area||'')===loc);
+    if(q)list=list.filter(a=>`${a.tag||''} ${a.name||''}`.toLowerCase().includes(q));
+    return list;
+  }
+
+  function dueList(){
+    const key=dueKey();
+    return getBaseList().filter(a=>{
+      const m=String(a.inspectionDueDate||'').match(/(\d{4})-(\d{2})-(\d{2})/);
+      if(!m)return false;
+      const d=new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00`);
+      if(key.toLowerCase()==='overdue')return d<today;
+      if(/^20\d{2}$/.test(key))return d>=today && +m[1]===+key;
+      return d>=today && +m[1]>2030;
+    });
+  }
+
+  function render(){
+    const root=document.getElementById('rbi');
+    if(!root||applying)return;
+    const wrap=root.querySelector('.rbi-table-wrap');
+    const tools=root.querySelector('.rbi-table-head .rbi-tools');
+    if(!wrap||!tools)return;
+    if(wrap.dataset.dueEnhanced==='1')return;
+    applying=true;
+    try{
+      const originalSearch=root.querySelector('#rbiDueSearch')?.value||'';
+      const list=dueList();
+      const filterState=JSON.parse(sessionStorage.getItem('rbiDueFilters')||'{}');
+      const search=(originalSearch||filterState.search||'').toLowerCase().trim();
+      const risk=filterState.risk||'';
+      const integrity=filterState.integrity||'';
+      let filtered=list.filter(a=>{
+        const text=`${a.tag||''} ${a.name||''} ${a.wilayahKerja||''} ${a.area||''}`.toLowerCase();
+        return (!search||text.includes(search))&&(!risk||String(a.risk1AP||'')===risk)&&(!integrity||String(a.integrityStatus||'')===integrity);
+      });
+      const pages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+      page=Math.min(Math.max(1,page),pages);
+      const start=(page-1)*PAGE_SIZE;
+      const rows=filtered.slice(start,start+PAGE_SIZE);
+      const table=root.querySelector('.rbi-table');
+      if(table){
+        table.innerHTML=`<colgroup><col class="c-no"><col class="c-tag"><col class="c-name"><col class="c-region"><col class="c-location"><col class="c-risk"><col class="c-integrity"><col class="c-last"><col class="c-due"><col class="c-action"></colgroup><thead><tr><th>No</th><th>Tag Number</th><th>Equipment Name</th><th>Wilayah Kerja</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Last Inspection</th><th>Inspection Due</th><th>Action</th></tr></thead><tbody>${rows.map((a,i)=>`<tr><td>${start+i+1}</td><td class="tag-link">${esc(a.tag||'-')}</td><td title="${esc(a.name||'-')}">${esc(a.name||'-')}</td><td>${esc(a.wilayahKerja||'-')}</td><td title="${esc(a.area||'-')}">${esc(a.area||'-')}</td><td><span class="risk-tag">${esc(a.risk1AP||'-')}</span></td><td><span class="integrity ${String(a.integrityStatus||'').toLowerCase()}">${esc(a.integrityStatus||'-')}</span></td><td>${date(a.lastInspectionDate)}</td><td>${date(a.inspectionDueDate)}</td><td><button class="view-btn" type="button" title="View">◉</button></td></tr>`).join('')||'<tr><td colspan="10" class="rbi-empty">Tidak ada data inspection due.</td></tr>'}</tbody>`;
+      }
+      wrap.dataset.dueEnhanced='1';
+      wrap.dataset.total=String(filtered.length);
+      const oldPager=root.querySelector('.rbi-pager');
+      if(oldPager)oldPager.outerHTML=`<div class="rbi-pager due-pager"><span>Showing ${filtered.length?start+1:0} to ${Math.min(start+PAGE_SIZE,filtered.length)} of ${fmt(filtered.length)} entries</span><div class="pager-buttons"><button type="button" data-page="prev" ${page<=1?'disabled':''}>‹</button>${Array.from({length:pages},(_,i)=>i+1).filter(n=>n===1||n===pages||Math.abs(n-page)<=1).map((n,i,arr)=>`${i&&n-arr[i-1]>1?'<span class="pager-more">…</span>':''}<button type="button" data-page="${n}" class="${n===page?'active':''}">${n}</button>`).join('')}<button type="button" data-page="next" ${page>=pages?'disabled':''}>›</button></div></div>`;
+      bindPager(root,pages);
+      bindFilter(root);
+      bindExport(root,filtered);
+      const count=root.querySelector('.rbi-table-head h2 .rbi-pill');
+      if(count)count.textContent=`${fmt(filtered.length)} Asset`;
+    }finally{applying=false;}
+  }
+
+  function bindPager(root,pages){
+    root.querySelectorAll('.due-pager button').forEach(b=>b.onclick=()=>{
+      const v=b.dataset.page;
+      if(v==='prev')page=Math.max(1,page-1);else if(v==='next')page=Math.min(pages,page+1);else page=Number(v)||1;
+      const wrap=root.querySelector('.rbi-table-wrap');if(wrap)wrap.dataset.dueEnhanced='';
+      render();
+    });
+  }
+
+  function bindFilter(root){
+    const tools=root.querySelector('.rbi-tools');if(!tools)return;
+    const btn=[...tools.querySelectorAll('button')].find(b=>!b.id||b.id!=='rbiDueExport');
+    if(!btn||btn.dataset.bound==='1')return;
+    btn.dataset.bound='1';btn.id='rbiDueFilterBtn';btn.textContent='▽ Filter';
+    let panel=root.querySelector('.rbi-due-filter-panel');
+    if(!panel){
+      panel=document.createElement('div');panel.className='rbi-due-filter-panel';
+      panel.innerHTML=`<label>Risk 1AP<select id="rbiDueRisk"><option value="">All Risk</option></select></label><label>Integrity Status<select id="rbiDueIntegrity"><option value="">All Status</option></select></label><button type="button" id="rbiDueReset">Reset</button>`;
+      tools.parentElement.insertAdjacentElement('afterend',panel);
+      const risks=[...new Set(dueList().map(a=>a.risk1AP).filter(Boolean))].sort();
+      const ints=[...new Set(dueList().map(a=>a.integrityStatus).filter(Boolean))].sort();
+      panel.querySelector('#rbiDueRisk').innerHTML='<option value="">All Risk</option>'+risks.map(v=>`<option>${esc(v)}</option>`).join('');
+      panel.querySelector('#rbiDueIntegrity').innerHTML='<option value="">All Status</option>'+ints.map(v=>`<option>${esc(v)}</option>`).join('');
+      const state=JSON.parse(sessionStorage.getItem('rbiDueFilters')||'{}');panel.querySelector('#rbiDueRisk').value=state.risk||'';panel.querySelector('#rbiDueIntegrity').value=state.integrity||'';
+      panel.querySelectorAll('select').forEach(s=>s.onchange=()=>{const st={search:root.querySelector('#rbiDueSearch')?.value||'',risk:panel.querySelector('#rbiDueRisk').value,integrity:panel.querySelector('#rbiDueIntegrity').value};sessionStorage.setItem('rbiDueFilters',JSON.stringify(st));page=1;root.querySelector('.rbi-table-wrap').dataset.dueEnhanced='';render()});
+      panel.querySelector('#rbiDueReset').onclick=()=>{sessionStorage.removeItem('rbiDueFilters');panel.querySelector('#rbiDueRisk').value='';panel.querySelector('#rbiDueIntegrity').value='';page=1;root.querySelector('.rbi-table-wrap').dataset.dueEnhanced='';render()};
+    }
+    btn.onclick=()=>panel.classList.toggle('open');
+  }
+
+  function bindExport(root,filtered){
+    const b=root.querySelector('#rbiDueExport');if(!b||b.dataset.bound==='1')return;
+    b.dataset.bound='1';b.textContent='⇩ Export';
+    b.onclick=()=>{
+      if(!window.XLSX){alert('Excel exporter belum siap. Silakan refresh halaman.');return;}
+      const rows=[['No','Tag Number','Equipment Name','Wilayah Kerja','Location','Risk 1AP','Integrity Status','Last Inspection','Inspection Due Date']];
+      filtered.forEach((a,i)=>rows.push([i+1,a.tag||'',a.name||'',a.wilayahKerja||'',a.area||'',a.risk1AP||'',a.integrityStatus||'',date(a.lastInspectionDate),date(a.inspectionDueDate)]));
+      const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:7},{wch:22},{wch:38},{wch:18},{wch:30},{wch:11},{wch:18},{wch:18},{wch:20}];ws['!autofilter']={ref:`A1:I${rows.length}`};XLSX.utils.book_append_sheet(wb,ws,'Inspection Due');
+      XLSX.writeFile(wb,`RBI_${dueKey().replace(/\s+/g,'_')}_Inspection_Due.xlsx`);
+    };
+  }
+
+  function bindSearch(){
+    const input=document.getElementById('rbiDueSearch');if(!input||input.dataset.enhanced==='1')return;
+    input.dataset.enhanced='1';input.oninput=()=>{page=1;const wrap=document.querySelector('#rbi .rbi-table-wrap');if(wrap)wrap.dataset.dueEnhanced='';render()};
+  }
+
+  async function boot(){
+    try{await loadAssets();}
+    catch(e){console.warn('RBI due UI data load failed',e);return;}
+    const root=document.getElementById('rbi');if(!root)return;
+    const observer=new MutationObserver(()=>{bindSearch();render()});
+    observer.observe(root,{childList:true,subtree:true});
+    setTimeout(()=>{bindSearch();render()},300);
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
