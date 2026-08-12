@@ -35,10 +35,15 @@ ALIASES = {
     "remarks": ["Tindak Lanjut", "Tindak lanjut", "Follow Up", "Follow-up", "Remarks", "Remark", "Inspection Remarks", "Notes"],
 }
 
-# The source workbook uses fixed Excel columns for the RBI dates.
-# AA = 27th column -> zero-based index 26; AB = 28th column -> zero-based index 27.
-LAST_INSPECTION_COL_INDEX = 26
-INSPECTION_DUE_COL_INDEX = 27
+# Authoritative fixed columns in the source workbook.
+# V = Integrity Status (22nd column, zero-based index 21)
+# Y = Risk 1AP (25th column, zero-based index 24)
+# AB = Last Inspection Date (28th column, zero-based index 27)
+# AD = Inspection Due Date (30th column, zero-based index 29)
+INTEGRITY_STATUS_COL_INDEX = 21
+RISK_1AP_COL_INDEX = 24
+LAST_INSPECTION_COL_INDEX = 27
+INSPECTION_DUE_COL_INDEX = 29
 
 
 def clean_header(value):
@@ -106,7 +111,9 @@ def build_records(rows, headers):
             continue
         seen_tags.add(tag_key)
 
-        # AA and AB are the authoritative Last Inspection Date and Inspection Due Date.
+        # Fixed source columns are authoritative for the RBI dashboard.
+        integrity_status = serialise(value_at_column(row, INTEGRITY_STATUS_COL_INDEX))
+        risk_1ap = serialise(value_at_column(row, RISK_1AP_COL_INDEX))
         last_inspection_date = serialise(value_at_column(row, LAST_INSPECTION_COL_INDEX))
         inspection_due_date = serialise(value_at_column(row, INSPECTION_DUE_COL_INDEX))
 
@@ -119,11 +126,11 @@ def build_records(rows, headers):
             "area": serialise(value_for(row, header_map, ALIASES["area"])),
             "service": serialise(value_for(row, header_map, ALIASES["service"])),
             "material": serialise(value_for(row, header_map, ALIASES["material"])),
-            "integrityStatus": serialise(value_for(row, header_map, ALIASES["integrityStatus"])),
-            "risk1AP": serialise(value_for(row, header_map, ALIASES["risk1AP"])),
+            "integrityStatus": integrity_status,
+            "risk1AP": risk_1ap,
             "risk2AP": serialise(value_for(row, header_map, ALIASES["risk2AP"])),
             "risk3AP": serialise(value_for(row, header_map, ALIASES["risk3AP"])),
-            "risk": serialise(value_for(row, header_map, ALIASES["risk1AP"])),
+            "risk": risk_1ap,
             "damageMechanism": serialise(value_for(row, header_map, ALIASES["damageMechanism"])),
             "corrosionRate": serialise(value_for(row, header_map, ALIASES["corrosionRate"])),
             "currentThickness": serialise(value_for(row, header_map, ALIASES["currentThickness"])),
@@ -303,12 +310,14 @@ def main():
     print(f"Inspection records: {len(inspections):,}")
     print(f"Wilayah Kerja: {len(set(str(x.get('wilayahKerja') or 'Unknown') for x in assets))}")
     print(f"Assets with remarks: {sum(1 for x in assets if x.get('remarks')):,}")
+    print(f"Assets with integrity status: {sum(1 for x in assets if x.get('integrityStatus')):,}")
+    print(f"Assets with Risk 1AP: {sum(1 for x in assets if x.get('risk1AP')):,}")
     print(f"Assets with last inspection date: {sum(1 for x in assets if x.get('lastInspectionDate')):,}")
     print(f"Assets with inspection due date: {sum(1 for x in assets if x.get('inspectionDueDate')):,}")
     print(f"Database: {output}")
 
     if args.push:
-        git_push(repo, "Sync RBI inspection dates from Excel AA AB")
+        git_push(repo, "Sync RBI fixed columns V Y AB AD from OneDrive")
         print("Push ke GitHub selesai.")
 
 
