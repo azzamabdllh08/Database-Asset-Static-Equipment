@@ -20,4 +20,5 @@
 <script>
 (async()=>{try{const r=await fetch('data/manifest.json',{cache:'no-store'});const d=await r.json();const n=id=>document.getElementById(id);if(n('dashTotalAsset'))n('dashTotalAsset').textContent=Number(d.totalAssets||0).toLocaleString('id-ID');if(n('dashInspection'))n('dashInspection').textContent=Number(d.totalInspections||0).toLocaleString('id-ID');if(n('dashRbi'))n('dashRbi').textContent=Number(d.totalRbi||0).toLocaleString('id-ID');const rc=d.riskCounts||{};const high=Object.entries(rc).filter(([k])=>['5D','5E','4E','3E'].includes(k)).reduce((s,[,v])=>s+Number(v||0),0);if(n('dashHighRisk'))n('dashHighRisk').textContent=high.toLocaleString('id-ID');document.querySelectorAll('.dashboard-link').forEach(b=>b.addEventListener('click',()=>document.querySelector(`.nav-item[data-page="${b.dataset.page}"]`)?.click()));document.getElementById('roleBtn')?.addEventListener('click',()=>{const role=document.getElementById('roleName')?.textContent;if(document.getElementById('dashRole'))document.getElementById('dashRole').textContent=role||'Admin'});}catch(e){console.warn(e)}})();
 </script>
+<script src="rbi_template.js"></script>
 </body></html>
