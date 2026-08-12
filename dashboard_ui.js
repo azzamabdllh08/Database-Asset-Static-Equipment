@@ -16,7 +16,7 @@ function initDashboardUI(){
  const nav=p=>document.querySelector('.nav-item[data-page="'+p+'"]')?.click(); d.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.page)));
  fetch('data/manifest.json',{cache:'no-store'}).then(r=>r.json()).then(x=>{
   const n=id=>document.getElementById(id),fmt=v=>Number(v||0).toLocaleString('id-ID'); const total=+x.totalAssets||0,ins=+x.totalInspections||0,rbi=+x.totalRbi||0;
-  if(n('lastDataSync')&&x.generatedAt){const dt=new Date(x.generatedAt);n('lastDataSync').textContent='Last data sync: '+dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+  if(n('lastDataSync')&&x.generatedAt){const dt=new Date(x.generatedAt);const syncFormatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});n('lastDataSync').textContent='Last data sync: '+syncFormatter.format(dt)+' WIB';}
   n('dashTotalAsset').textContent=fmt(total);n('dashInspection').textContent=fmt(ins);n('dashRbi').textContent=fmt(rbi);
   const rc=x.riskCounts||{},high=Object.entries(rc).filter(([k])=>['5D','5E','4E','3E'].includes(k)).reduce((s,[,v])=>s+ +v,0);n('dashHighRisk').textContent=fmt(high);
   const pct=(v,m)=>Math.min(100,m?Math.round(v/m*100):0),ip=pct(ins,total),rp=pct(rbi,total),regions=x.regions||[];
