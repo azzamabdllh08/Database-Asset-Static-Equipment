@@ -13,7 +13,7 @@ const CONFIG = {
   const inspection=document.createElement('script');inspection.src='inspection_ui.js';document.head.appendChild(inspection);
   const xlsx=document.createElement('script');
   xlsx.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
-  xlsx.onload=()=>{const exp=document.createElement('script');exp.src='xlsx-export.js?v=styled2';document.head.appendChild(exp)};
+  xlsx.onload=()=>{const exp=document.createElement('script');exp.src='xlsx-export.js?v=styled3';document.head.appendChild(exp)};
   document.head.appendChild(xlsx);
-  setTimeout(()=>{const due=document.createElement('script');due.src='rbi_due_ui.js';document.body.appendChild(due)},0);
+  setTimeout(()=>{const due=document.createElement('script');due.src='rbi_due_ui.js?v=20260812-3';document.body.appendChild(due)},0);
 })();
