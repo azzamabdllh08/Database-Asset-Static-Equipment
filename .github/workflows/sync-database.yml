@@ -2,6 +2,12 @@ name: Sync Asset Database from OneDrive Share Link
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-database.yml'
+      - 'sync_database.py'
+      - 'tools/sync_static.py'
   schedule:
     - cron: '0 */3 * * *'
 
