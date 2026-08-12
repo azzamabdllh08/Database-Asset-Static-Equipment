@@ -12,8 +12,8 @@ const CONFIG = {
   const js=document.createElement('script');js.src='dashboard_ui.js';document.head.appendChild(js);
   const inspection=document.createElement('script');inspection.src='inspection_ui.js';document.head.appendChild(inspection);
   const xlsx=document.createElement('script');
-  xlsx.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
-  xlsx.onload=()=>{const exp=document.createElement('script');exp.src='xlsx-export.js';document.head.appendChild(exp)};
+  xlsx.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+  xlsx.onload=()=>{const exp=document.createElement('script');exp.src='xlsx-export.js?v=styled2';document.head.appendChild(exp)};
   document.head.appendChild(xlsx);
   setTimeout(()=>{const due=document.createElement('script');due.src='rbi_due_ui.js';document.body.appendChild(due)},0);
 })();
