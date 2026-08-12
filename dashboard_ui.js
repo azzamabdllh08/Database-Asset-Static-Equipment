@@ -1,6 +1,10 @@
 function initDashboardUI(){
  const d=document.getElementById('dashboard'); if(!d)return;
- d.innerHTML=`<div class="dash-hero"><div><div class="dash-kicker">ASSET INTEGRITY MANAGEMENT</div><h1>Asset Database</h1><p>Central monitoring dashboard untuk Static Equipment, Inspection dan Risk Based Inspection.</p></div><div class="hero-status"><span class="live-dot"></span><div><b>System Online</b><small>Database & services available</small></div></div></div>
+ d.innerHTML=`<style>
+ .dash-composition,.dash-coverage{min-height:270px}.panel-caption{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7b8792;background:#f4f7fa;border:1px solid #e4e9ee;border-radius:12px;padding:5px 9px;margin-left:auto}.composition-row{margin:13px 0}.composition-row>div:first-child{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.composition-row span{font-size:11px;color:#42515e;font-weight:700}.composition-row b{font-size:11px;color:#17212b}.composition-row>small{display:block;text-align:right;color:#7b8792;font-size:9px;margin-top:4px}.composition-track,.coverage-track{height:8px;background:#edf1f4;border-radius:10px;overflow:hidden}.composition-track i,.coverage-track i{display:block;height:100%;border-radius:10px;background:#0867cf}.composition-row:nth-child(2) .composition-track i{background:#16a085}.composition-row:nth-child(3) .composition-track i{background:#e9a400}.composition-row:nth-child(4) .composition-track i{background:#6b8fd6}.composition-row:nth-child(5) .composition-track i{background:#8b6fc7}.composition-row:nth-child(6) .composition-track i{background:#8a9aa8}.coverage-row{padding:9px 0 12px;border-bottom:1px solid #edf0f3}.coverage-row:last-child{border-bottom:0}.coverage-row>div:first-child{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}.coverage-row span{font-size:11px;font-weight:700;color:#42515e}.coverage-row b{font-size:12px;color:#0867cf}.coverage-row small{display:block;color:#8a95a0;font-size:9px;margin-top:5px}.coverage-track i{background:linear-gradient(90deg,#0867cf,#16a085)}.dash-bottom-grid{grid-template-columns:1.15fr .85fr!important}
+ @media(max-width:760px){.dash-bottom-grid{grid-template-columns:1fr!important}.panel-caption{margin-left:0}}
+ </style>
+ <div class="dash-hero"><div><div class="dash-kicker">ASSET INTEGRITY MANAGEMENT</div><h1>Asset Database</h1><p>Central monitoring dashboard untuk Static Equipment, Inspection dan Risk Based Inspection.</p></div><div class="hero-status"><span class="live-dot"></span><div><b>System Online</b><small>Database & services available</small></div></div></div>
  <div class="dash-welcome"><div><span class="eyebrow">OVERVIEW</span><h2>Operational Asset Overview</h2><p>Pantau kondisi database dan akses modul utama dari satu halaman.</p></div><div class="dash-date">Assessment Period <b>24 Months (1AP)</b></div></div>
  <div class="dash-kpis"><div class="dash-kpi"><div class="kpi-icon blue">▦</div><div><small>Total Asset</small><b id="dashTotalAsset">-</b><span>Static equipment terdaftar</span></div></div><div class="dash-kpi"><div class="kpi-icon teal">◫</div><div><small>Inspection Records</small><b id="dashInspection">-</b><span>Riwayat inspection</span></div></div><div class="dash-kpi"><div class="kpi-icon amber">◉</div><div><small>RBI Assessment</small><b id="dashRbi">-</b><span>Asset dengan assessment</span></div></div><div class="dash-kpi risk"><div class="kpi-icon red">!</div><div><small>High Risk</small><b id="dashHighRisk">-</b><span>Unsatisfactory + Critical</span></div></div></div>
  <div class="dash-section-title"><div><h2>Quick Access</h2><p>Modul utama Asset Database</p></div></div>
@@ -11,22 +15,11 @@ function initDashboardUI(){
  fetch('data/manifest.json',{cache:'no-store'}).then(r=>r.json()).then(x=>{
   const n=id=>document.getElementById(id),fmt=v=>Number(v||0).toLocaleString('id-ID');
   const total=Number(x.totalAssets||0), inspections=Number(x.totalInspections||0), rbi=Number(x.totalRbi||0);
-  if(n('dashTotalAsset'))n('dashTotalAsset').textContent=fmt(total);
-  if(n('dashInspection'))n('dashInspection').textContent=fmt(inspections);
-  if(n('dashRbi'))n('dashRbi').textContent=fmt(rbi);
-  const rc=x.riskCounts||{};
-  const high=Object.entries(rc).filter(([k])=>['5D','5E','4E','3E'].includes(k)).reduce((s,[,v])=>s+Number(v||0),0);
-  if(n('dashHighRisk'))n('dashHighRisk').textContent=fmt(high);
-  const pct=(v,max)=>Math.min(100,max?Math.round((v/max)*100):0);
-  const ip=pct(inspections,total),rp=pct(rbi,total),regions=(x.regions||[]).length;
-  if(n('coverageInspection'))n('coverageInspection').textContent=ip+'%';
-  if(n('coverageInspectionBar'))n('coverageInspectionBar').style.width=ip+'%';
-  if(n('coverageRbi'))n('coverageRbi').textContent=rp+'%';
-  if(n('coverageRbiBar'))n('coverageRbiBar').style.width=rp+'%';
-  if(n('coverageRegions'))n('coverageRegions').textContent=regions+' Wilayah';
-  if(n('coverageRegionsBar'))n('coverageRegionsBar').style.width=Math.min(100,regions*14.3)+'%';
-  const types=Object.entries(x.typeCounts||{}).sort((a,b)=>b[1]-a[1]).slice(0,6),maxType=types[0]?.[1]||1;
-  if(n('assetComposition'))n('assetComposition').innerHTML=types.map(([name,count])=>`<div class="composition-row"><div><span>${name}</span><b>${fmt(count)}</b></div><div class="composition-track"><i style="width:${Math.max(3,(count/maxType)*100)}%"></i></div><small>${total?((count/total)*100).toFixed(1):'0.0'}%</small></div>`).join('');
+  if(n('dashTotalAsset'))n('dashTotalAsset').textContent=fmt(total);if(n('dashInspection'))n('dashInspection').textContent=fmt(inspections);if(n('dashRbi'))n('dashRbi').textContent=fmt(rbi);
+  const rc=x.riskCounts||{},high=Object.entries(rc).filter(([k])=>['5D','5E','4E','3E'].includes(k)).reduce((s,[,v])=>s+Number(v||0),0);if(n('dashHighRisk'))n('dashHighRisk').textContent=fmt(high);
+  const pct=(v,max)=>Math.min(100,max?Math.round((v/max)*100):0),ip=pct(inspections,total),rp=pct(rbi,total),regions=(x.regions||[]).length;
+  if(n('coverageInspection'))n('coverageInspection').textContent=ip+'%';if(n('coverageInspectionBar'))n('coverageInspectionBar').style.width=ip+'%';if(n('coverageRbi'))n('coverageRbi').textContent=rp+'%';if(n('coverageRbiBar'))n('coverageRbiBar').style.width=rp+'%';if(n('coverageRegions'))n('coverageRegions').textContent=regions+' Wilayah';if(n('coverageRegionsBar'))n('coverageRegionsBar').style.width=Math.min(100,regions*14.3)+'%';
+  const types=Object.entries(x.typeCounts||{}).sort((a,b)=>b[1]-a[1]).slice(0,6),maxType=types[0]?.[1]||1;if(n('assetComposition'))n('assetComposition').innerHTML=types.map(([name,count])=>`<div class="composition-row"><div><span>${name}</span><b>${fmt(count)}</b></div><div class="composition-track"><i style="width:${Math.max(3,(count/maxType)*100)}%"></i></div><small>${total?((count/total)*100).toFixed(1):'0.0'}%</small></div>`).join('');
  }).catch(console.warn);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initDashboardUI);else initDashboardUI();
