@@ -85,6 +85,25 @@ jobs:
       - name: Generate Static Equipment database
         run: python sync_database.py
 
+      - name: Normalize manifest timestamp as UTC
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          path = Path('data/manifest.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          raw = str(data.get('generatedAt', '')).strip()
+          if raw:
+              dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+              if dt.tzinfo is None:
+                  dt = dt.replace(tzinfo=timezone.utc)
+              data['generatedAt'] = dt.astimezone(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+          path.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+          print('generatedAt:', data.get('generatedAt'))
+          PY
+
       - name: Commit updated database
         run: |
           set -e
