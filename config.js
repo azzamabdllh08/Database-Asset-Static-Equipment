@@ -7,5 +7,6 @@ const CONFIG = {
 
 (()=>{
   const css=document.createElement('link');css.rel='stylesheet';css.href='dashboard_theme.css';document.head.appendChild(css);
+  const compact=document.createElement('link');compact.rel='stylesheet';compact.href='dashboard_compact.css';document.head.appendChild(compact);
   const js=document.createElement('script');js.src='dashboard_ui.js';document.head.appendChild(js);
 })();
