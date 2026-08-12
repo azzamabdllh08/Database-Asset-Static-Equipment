@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded',()=>{
+function initDashboardUI(){
  const d=document.getElementById('dashboard'); if(!d)return;
  d.innerHTML=`<div class="dash-hero"><div><div class="dash-kicker">ASSET INTEGRITY MANAGEMENT</div><h1>Asset Database</h1><p>Central monitoring dashboard untuk Static Equipment, Inspection dan Risk Based Inspection.</p></div><div class="hero-status"><span class="live-dot"></span><div><b>System Online</b><small>Database & services available</small></div></div></div>
  <div class="dash-welcome"><div><span class="eyebrow">OVERVIEW</span><h2>Operational Asset Overview</h2><p>Pantau kondisi database dan akses modul utama dari satu halaman.</p></div><div class="dash-date">Assessment Period <b>24 Months (1AP)</b></div></div>
@@ -9,4 +9,5 @@ document.addEventListener('DOMContentLoaded',()=>{
  const nav=p=>document.querySelector('.nav-item[data-page="'+p+'"]')?.click();
  d.querySelectorAll('.dash-module,.dashboard-link').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.page)));
  fetch('data/manifest.json',{cache:'no-store'}).then(r=>r.json()).then(x=>{const n=id=>document.getElementById(id);if(n('dashTotalAsset'))n('dashTotalAsset').textContent=Number(x.totalAssets||0).toLocaleString('id-ID');if(n('dashInspection'))n('dashInspection').textContent=Number(x.totalInspections||0).toLocaleString('id-ID');if(n('dashRbi'))n('dashRbi').textContent=Number(x.totalRbi||0).toLocaleString('id-ID');const rc=x.riskCounts||{};const high=Object.entries(rc).filter(([k])=>['5D','5E','4E','3E'].includes(k)).reduce((s,[,v])=>s+Number(v||0),0);if(n('dashHighRisk'))n('dashHighRisk').textContent=high.toLocaleString('id-ID');}).catch(console.warn);
-});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initDashboardUI);else initDashboardUI();
