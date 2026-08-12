@@ -1,65 +1,55 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DATABASE ASSET STATIC EQUIPMENT</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Asset Database — Static Equipment</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><div class="brand-mark">▣</div><div><strong id="brand">DATABASE ASSET STATIC EQUIPMENT</strong><small>Asset Integrity Management</small></div></div>
-    <div class="top-title"><span>INTEGRITY MANAGEMENT</span><b>STATIC EQUIPMENT & RBI</b></div>
-    <div class="top-actions"><button class="top-btn" id="refreshBtn">Refresh</button><button class="top-btn primary" id="exportDashboardBtn">Export</button><div class="user-pill"><span class="avatar">A</span><span>Administrator</span><span>⌄</span></div></div>
-  </header>
-  <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-title">WORKSPACE</div>
-      <button class="side-link active" data-page="dashboard">⌂ <span>Dashboard</span></button>
-      <button class="side-link" data-page="assessment">▦ <span>RBI Assessment</span></button>
-      <button class="side-link" data-page="assets">▤ <span>Asset Register</span></button>
-      <button class="side-link" data-page="inspection">◷ <span>Inspection</span></button>
-      <div class="sidebar-title">RBI ANALYSIS</div>
-      <button class="side-link" data-page="risk">◈ <span>Risk Matrix</span></button>
-      <button class="side-link" data-page="damage">⚠ <span>Damage Mechanism</span></button>
-      <button class="side-link" data-page="rli">↗ <span>RLI Monitoring</span></button>
-      <button class="side-link" data-page="planning">□ <span>Inspection Planning</span></button>
-      <div class="sidebar-title">DATA MANAGEMENT</div>
-      <button class="side-link" data-page="sync">↻ <span>Data Sync</span></button>
-      <button class="side-link" data-page="quality">✓ <span>Data Quality</span></button>
-      <button class="side-link" data-page="reports">▱ <span>Reports</span></button>
-      <div class="sidebar-title">ADMINISTRATION</div>
-      <button class="side-link" data-page="users">♙ <span>Users & Roles</span></button>
-      <button class="side-link" data-page="audit">≡ <span>Audit Log</span></button>
-      <button class="side-link" data-page="settings">⚙ <span>Settings</span></button>
-      <div class="sidebar-footer"><span class="status-dot"></span> System Online<br><small>RBI Database</small></div>
-    </aside>
-
-    <main>
-      <section id="dashboard" class="page active">
-        <div class="breadcrumb">Home / Dashboard</div>
-        <div class="page-title-row"><div><div class="eyebrow">ASSET INTEGRITY</div><h1>RBI Dashboard</h1><p>Ringkasan asset, risiko 1AP, inspection due dan prioritas integrity.</p></div><button class="action-btn" data-page="assessment">Open RBI Assessment →</button></div>
-        <div class="dashboard-filters"><select id="dashboardRegion"><option value="">All Wilayah Kerja</option></select><select id="dashboardLocation"><option value="">All Location</option></select><input id="dashboardSearch" placeholder="Search Tag No / Equipment Name"><button id="dashboardReset">Reset</button></div>
-        <div class="metric-grid"><div class="metric-card"><span>Total Asset</span><b id="totalAssets">0</b><small>Registered static equipment</small></div><div class="metric-card"><span>Inspection Records</span><b id="totalInspections">0</b><small>Inspection history</small></div><div class="metric-card"><span>RBI Assessment</span><b id="totalRbi">0</b><small>Assets assessed</small></div><div class="metric-card"><span>High Risk</span><b id="highRisk">0</b><small>Unsatisfactory + Critical</small></div></div>
-        <div class="risk-grid">
-          <div class="panel matrix-panel"><div class="panel-head"><div><h3>RBI Risk Matrix 1AP</h3><span>Risk distribution by Likelihood × Consequence</span></div><span class="badge" id="matrixBadge">0 asset</span></div><div id="riskMatrix"></div></div>
-          <div class="panel diagram-panel"><div class="panel-head"><div><h3>Diagram Risiko 1AP</h3><span>RBI Risk Summary</span></div><span class="badge" id="riskTotalBadge">0 asset</span></div><div id="riskDiagram"></div></div>
-        </div>
-        <div class="panel due-panel"><div class="panel-head"><div><h3>Inspection Due Planning</h3><span>Perencanaan inspeksi berdasarkan tanggal due</span></div></div><div id="duePlanning" class="due-grid"></div></div>
-        <div class="panel table-panel"><div class="panel-head"><div><h3 id="tableTitle">2026 Inspection Due</h3><span id="tableInfo">Showing 0 entries</span></div><div class="table-actions"><span class="badge" id="tableBadge">0 Asset</span><button class="outline-btn" id="exportTableBtn">Export ↓</button></div></div><div class="table-tools"><input id="tableSearch" placeholder="Search in table..."><button id="tableFilterBtn">☰ Filter</button></div><div class="table-wrap"><table><thead><tr><th>No</th><th>Tag Number</th><th>Equipment Name</th><th>Wilayah Kerja</th><th>Location</th><th>Risk 1AP</th><th>Integrity Status</th><th>Last Inspection</th><th>Inspection Due Date</th><th>Action</th></tr></thead><tbody id="assetRows"></tbody></table></div><div id="pagination" class="pagination"></div></div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="brand-mark">▤</div><div><strong>ASSET DATABASE</strong><small>Static Equipment.</small></div></div>
+    <nav>
+      <div class="nav-label">MAIN MENU</div>
+      <button class="nav-item active" data-page="dashboard"><span>⌂</span>Dashboard</button>
+      <button class="nav-item" data-page="assets"><span>▦</span>Asset Register</button>
+      <button class="nav-item" data-page="inspection"><span>◫</span>Inspection</button>
+      <button class="nav-item" data-page="rbi"><span>◉</span>RBI</button>
+      <button class="nav-item" data-page="reports"><span>▧</span>Report</button>
+      <div class="nav-label">MANAGEMENT</div>
+      <button class="nav-item" data-page="master"><span>▤</span>Data Master</button>
+      <button class="nav-item" data-page="users"><span>♙</span>User Management</button>
+      <button class="nav-item" data-page="import"><span>⇧</span>Import Data</button>
+      <button class="nav-item" data-page="settings"><span>⚙</span>Settings</button>
+    </nav>
+    <div class="sidebar-footer">© 2025 Asset Database<br><span>All rights reserved.</span></div>
+  </aside>
+  <div class="main-shell">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="breadcrumb"><span>Home</span><b>/</b><span id="crumbParent">Dashboard</span><b>/</b><strong id="crumbCurrent">Overview</strong></div>
+      <div class="top-actions"><button class="icon-btn" id="themeBtn">☼</button><div class="role-wrap"><button class="role-btn" id="roleBtn"><span class="avatar">♙</span><b id="roleName">Admin</b><span>⌄</span></button><div class="role-menu" id="roleMenu"><small>Current Role</small><button data-role="Admin">Admin <em>Full access</em></button><button data-role="RBI Analyst">RBI Analyst <em>RBI & assessment</em></button><button data-role="Inspector">Inspector <em>Inspection data</em></button><button data-role="Viewer">Viewer <em>Read only</em></button></div></div></div>
+    </header>
+    <main class="content">
+      <section class="page active" id="dashboard">
+        <div class="page-heading"><div><h1>RBI Assessment</h1><p>Penilaian Risiko Berdasarkan Metodologi Risk Based Inspection (RBI)</p></div></div>
+        <div class="filter-card"><div class="field"><label>Wilayah Kerja</label><select id="dashRegion"><option value="">All Wilayah Kerja</option></select></div><div class="field"><label>Location</label><select id="dashLocation" disabled><option value="">All Location</option></select></div><div class="field search-field"><label>&nbsp;</label><div class="search-box"><input id="dashSearch" placeholder="Search Tag No / Equipment Name"><span>⌕</span></div></div><button class="outline-btn" id="dashExport">⇩&nbsp; Export</button></div>
+        <div class="risk-grid"><div class="panel"><div class="panel-title"><h2>RBI Risk Matrix 1AP <i>ⓘ</i></h2><span class="asset-pill" id="matrixCount">10.161 Asset</span></div><div id="dashboardMatrix"></div></div><div class="panel"><div class="panel-title"><h2>Diagram Risiko 1AP <i>ⓘ</i></h2><span class="asset-pill" id="diagramCount">10.161 Asset</span></div><div class="diagram-layout"><div id="dashboardDonut"></div><div id="dashboardSummary"></div></div></div></div>
+        <div class="panel"><div class="panel-title"><div><h2>Inspection Due Planning</h2><p>Perencanaan Inspeksi Berdasarkan Tanggal Due</p></div></div><div class="due-cards" id="dueCards"></div></div>
+        <div class="panel"><div class="panel-title"><div><h2 id="dueTitle">2026 Inspection Due</h2></div><span class="asset-pill" id="dueCount">0 Asset</span><div class="table-tools"><div class="mini-search"><input id="dueSearch" placeholder="Search in table..."><span>⌕</span></div><button class="filter-btn">▽ Filter</button><button class="outline-btn small" id="dueExport">⇩ Export</button></div></div><div id="dueTable"></div></div>
       </section>
 
-      <section id="genericPage" class="page generic-page"><div class="breadcrumb">Home / <span id="crumb">RBI</span></div><div class="generic-hero"><div class="generic-icon" id="genericIcon">◈</div><div><div class="eyebrow" id="genericEyebrow">RBI ANALYSIS</div><h1 id="genericTitle">RBI Module</h1><p id="genericText">Module aplikasi RBI.</p></div></div><div class="generic-grid"><div class="panel"><h3>Module Overview</h3><div class="generic-stat"><b id="genericMetric">0</b><span id="genericMetricText">Records</span></div></div><div class="panel"><h3>Quick Actions</h3><div class="quick-actions"><button data-page="assessment">Assessment</button><button data-page="assets">Asset Register</button><button data-page="inspection">Inspection</button><button data-page="reports">Reports</button></div></div></div></section>
-      <section id="assessmentPage" class="page assessment-page"><div id="assessmentMount"></div></section>
+      <section class="page" id="rbi"><div class="page-heading"><div><h1>RBI Assessment</h1><p>Penilaian Risiko Berdasarkan Metodologi Risk Based Inspection (RBI)</p></div></div><div class="filter-card"><div class="field"><label>Wilayah Kerja</label><select id="rbiRegion"><option value="">All Wilayah Kerja</option></select></div><div class="field"><label>Location</label><select id="rbiLocation" disabled><option value="">All Location</option></select></div><div class="field search-field"><label>&nbsp;</label><div class="search-box"><input id="rbiSearch" placeholder="Search Tag No / Equipment Name"><span>⌕</span></div></div><button class="outline-btn" id="rbiExport">⇩&nbsp; Export</button></div><div class="risk-grid"><div class="panel"><div class="panel-title"><h2>RBI Risk Matrix 1AP <i>ⓘ</i></h2><span class="asset-pill" id="rbiMatrixCount">10.161 Asset</span></div><div id="rbiMatrix"></div></div><div class="panel"><div class="panel-title"><h2>Diagram Risiko 1AP <i>ⓘ</i></h2><span class="asset-pill" id="rbiDiagramCount">10.161 Asset</span></div><div class="diagram-layout"><div id="rbiDonut"></div><div id="rbiSummary"></div></div></div></div><div class="panel"><div class="panel-title"><h2>RBI Assessment Data</h2><span class="asset-pill" id="rbiTableCount">0 Asset</span></div><div id="rbiTable"></div></div></section>
+
+      <section class="page" id="assets"><div class="page-heading"><div><h1>Asset Register</h1><p>Central database static equipment.</p></div></div><div class="panel"><div class="toolbar"><div class="field"><label>Wilayah Kerja</label><select id="assetRegion"></select></div><div class="field"><label>Location</label><select id="assetLocation" disabled><option>All Location</option></select></div><div class="search-box grow"><input id="assetSearch" placeholder="Search Tag No / Equipment Name"><span>⌕</span></div><button class="outline-btn" id="assetExport">⇩ Export</button></div><div id="assetTable"></div></div></section>
+      <section class="page" id="inspection"><div class="page-heading"><div><h1>Inspection</h1><p>Inspection history and planning.</p></div></div><div class="panel"><div class="toolbar"><select id="inspectionYear"><option value="">All Years</option></select><div class="search-box grow"><input id="inspectionSearch" placeholder="Search Tag Number"><span>⌕</span></div><button class="outline-btn" id="inspectionExport">⇩ Export</button></div><div id="inspectionTable"></div></div></section>
+      <section class="page" id="reports"><div class="page-heading"><div><h1>Report</h1><p>RBI and inspection reporting.</p></div></div><div class="cards-grid"><div class="info-card"><b>RBI Assessment Report</b><span>Report hasil Risk Based Inspection.</span><a id="reportLink" target="_blank">Open Report →</a></div><div class="info-card"><b>Inspection Report</b><span>Inspection history dan due planning.</span><button class="outline-btn">Coming Next</button></div></div></section>
+      <section class="page" id="master"><div class="page-heading"><div><h1>Data Master</h1><p>Master data wilayah, location, object type dan konfigurasi RBI.</p></div></div><div class="cards-grid"><div class="info-card"><b>Wilayah Kerja</b><span id="masterRegions">0</span></div><div class="info-card"><b>Object Type</b><span id="masterTypes">0</span></div><div class="info-card"><b>RBI Records</b><span id="masterRbi">0</span></div></div></section>
+      <section class="page" id="users"><div class="page-heading"><div><h1>User Management</h1><p>Role dan hak akses aplikasi.</p></div><button class="primary-btn">+ Add User</button></div><div class="panel"><table><thead><tr><th>User</th><th>Role</th><th>Access</th><th>Status</th><th>Action</th></tr></thead><tbody><tr><td><b>Admin</b><br><small>Administrator</small></td><td><span class="role-badge admin">Admin</span></td><td>Full Access</td><td><span class="status good">Active</span></td><td>⋮</td></tr><tr><td><b>RBI Analyst</b><br><small>RBI Team</small></td><td><span class="role-badge">RBI Analyst</span></td><td>RBI / Reports</td><td><span class="status good">Active</span></td><td>⋮</td></tr><tr><td><b>Inspector</b><br><small>Inspection Team</small></td><td><span class="role-badge">Inspector</span></td><td>Inspection / Assets</td><td><span class="status good">Active</span></td><td>⋮</td></tr></tbody></table></div></section>
+      <section class="page" id="import"><div class="page-heading"><div><h1>Import Data</h1><p>Import asset, inspection dan RBI data secara bertahap.</p></div></div><div class="panel import-panel"><div class="dropzone"><div class="upload-icon">⇧</div><h2>Import Database</h2><p>Drag & drop file Excel/CSV di sini atau pilih file.</p><input type="file" id="importFile" accept=".xlsx,.xls,.csv"><label for="importFile" class="primary-btn">Choose File</label><div id="importFileName" class="muted"></div></div><div class="import-note"><b>Import workflow</b><span>1. Upload file</span><span>2. Validate columns</span><span>3. Preview changes</span><span>4. Commit to database</span></div></div></section>
+      <section class="page" id="settings"><div class="page-heading"><div><h1>Settings</h1><p>Application configuration.</p></div></div><div class="panel settings-list"><label>Assessment Period <b>24 Months (1AP)</b></label><label>Default Role <b>Admin</b></label><label>Database Source <b>Regional JSON / Manifest</b></label><label>Theme <b>Light</b></label></div></section>
     </main>
   </div>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-  <script src="app_recovery_patch.js?v=1"></script>
-  <script src="inspection_filter.js?v=8"></script>
-  <script src="inspection_year_region_fix.js?v=1"></script>
-  <script src="rbi_patch.js?v=2"></script>
-  <script src="dashboard_filter.js?v=5"></script>
-  <script src="rbi_direct_filter.js?v=5"></script>
+</div>
+<script src="config.js"></script><script src="app.js"></script>
 </body>
 </html>
