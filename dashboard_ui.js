@@ -1,7 +1,7 @@
 function initDashboardUI(){
  const d=document.getElementById('dashboard'); if(!d)return;
  d.innerHTML=`
- <div class="exec-head"><div><span class="exec-kicker">ASSET INTEGRITY MANAGEMENT</span><h1>Asset Database</h1><p>Executive overview of static equipment, inspection records and RBI readiness.</p></div><div class="exec-meta"><span class="live-dot"></span><div><b>System Online</b><small>Last data sync: 11 Aug 2026</small></div></div></div>
+ <div class="exec-head"><div><span class="exec-kicker">ASSET INTEGRITY MANAGEMENT</span><h1>Asset Database</h1><p>Executive overview of static equipment, inspection records and RBI readiness.</p></div><div class="exec-meta"><span class="live-dot"></span><div><b>System Online</b><small id="lastDataSync">Last data sync: -</small></div></div></div>
  <div class="exec-kpis">
   <div class="exec-kpi blue"><span class="exec-icon">▦</span><div><small>Total Asset</small><strong id="dashTotalAsset">-</strong><em>Static equipment</em></div></div>
   <div class="exec-kpi teal"><span class="exec-icon">◫</span><div><small>Inspection Records</small><strong id="dashInspection">-</strong><em>Inspection history</em></div></div>
@@ -16,6 +16,7 @@ function initDashboardUI(){
  const nav=p=>document.querySelector('.nav-item[data-page="'+p+'"]')?.click(); d.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.page)));
  fetch('data/manifest.json',{cache:'no-store'}).then(r=>r.json()).then(x=>{
   const n=id=>document.getElementById(id),fmt=v=>Number(v||0).toLocaleString('id-ID'); const total=+x.totalAssets||0,ins=+x.totalInspections||0,rbi=+x.totalRbi||0;
+  if(n('lastDataSync')&&x.generatedAt){const dt=new Date(x.generatedAt);n('lastDataSync').textContent='Last data sync: '+dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
   n('dashTotalAsset').textContent=fmt(total);n('dashInspection').textContent=fmt(ins);n('dashRbi').textContent=fmt(rbi);
   const rc=x.riskCounts||{},high=Object.entries(rc).filter(([k])=>['5D','5E','4E','3E'].includes(k)).reduce((s,[,v])=>s+ +v,0);n('dashHighRisk').textContent=fmt(high);
   const pct=(v,m)=>Math.min(100,m?Math.round(v/m*100):0),ip=pct(ins,total),rp=pct(rbi,total),regions=x.regions||[];
