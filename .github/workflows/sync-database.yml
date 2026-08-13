@@ -9,8 +9,7 @@ on:
       - 'sync_database.py'
       - 'tools/sync_static.py'
   schedule:
-    # Every 3 hours. GitHub Actions schedules use UTC.
-    # 00:17 UTC = 07:17 WIB, then every 3 hours.
+    # Every 3 hours at minute 17. GitHub Actions cron is UTC.
     - cron: '17 0,3,6,9,12,15,18,21 * * *'
 
 permissions:
