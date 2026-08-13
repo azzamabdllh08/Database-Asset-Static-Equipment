@@ -9,7 +9,9 @@ on:
       - 'sync_database.py'
       - 'tools/sync_static.py'
   schedule:
-    - cron: '0 */3 * * *'
+    # Every 3 hours at minute 17, using Jakarta time to avoid the top-of-hour load.
+    - cron: '17 */3 * * *'
+      timezone: 'Asia/Jakarta'
 
 permissions:
   contents: write
