@@ -9,9 +9,9 @@ on:
       - 'sync_database.py'
       - 'tools/sync_static.py'
   schedule:
-    # Every 3 hours at minute 17, using Jakarta time to avoid the top-of-hour load.
-    - cron: '17 */3 * * *'
-      timezone: 'Asia/Jakarta'
+    # Every 3 hours. GitHub Actions schedules use UTC.
+    # 00:17 UTC = 07:17 WIB, then every 3 hours.
+    - cron: '17 0,3,6,9,12,15,18,21 * * *'
 
 permissions:
   contents: write
