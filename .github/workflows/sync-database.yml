@@ -45,7 +45,6 @@ jobs:
           import base64
           import json
           import os
-          import time
           import urllib.parse
           import urllib.request
 
@@ -57,75 +56,133 @@ jobs:
               if size < 1000:
                   raise RuntimeError(f'Downloaded file is unexpectedly small: {size} bytes')
               with open(path, 'rb') as f:
-                  if f.read(4) != b'PK\x03\x04':
-                      raise RuntimeError('Downloaded response is not an XLSX/ZIP file.')
+                  magic = f.read(4)
+              if magic != b'PK\x03\x04':
+                  raise RuntimeError('Downloaded response is not a valid XLSX/ZIP file.')
               return size
 
-          def download(url, headers=None):
-              req = urllib.request.Request(url, headers=headers or {
+          def fetch_bytes(url, headers=None, timeout=120):
+              request_headers = {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142 Safari/537.36',
-                  'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*',
-              })
-              with urllib.request.urlopen(req, timeout=120) as r, open(output, 'wb') as f:
-                  while True:
-                      chunk = r.read(1024 * 1024)
-                      if not chunk:
-                          break
-                      f.write(chunk)
-              return validate(output)
+                  'Accept': '*/*',
+              }
+              if headers:
+                  request_headers.update(headers)
+              req = urllib.request.Request(url, headers=request_headers)
+              with urllib.request.urlopen(req, timeout=timeout) as response:
+                  data = response.read()
+                  content_type = response.headers.get('Content-Type', '')
+                  final_url = response.geturl()
+              return data, content_type, final_url
+
+          def save_and_validate(data, label):
+              with open(output, 'wb') as f:
+                  f.write(data)
+              size = validate(output)
+              print(f'Success: {label} -> {size:,} bytes')
 
           errors = []
 
-          # Method 1: OneDrive public-share direct download. This avoids the
-          # Microsoft Badger endpoint that has been failing in scheduled runs.
+          # 1) Microsoft OneDrive share resolver. This is the preferred path
+          # for modern OneDrive share links because it asks Microsoft for the
+          # actual temporary content URL instead of scraping the share page.
           try:
-              print('Download method 1: public share ?download=1')
+              print('Download method 1: Microsoft OneDrive share resolver')
+              app_id = '5cbed6ac-a083-4e14-b191-b4ba07653de2'
+              token_req = urllib.request.Request(
+                  'https://api-badgerp.svc.ms/v1.0/token',
+                  data=json.dumps({'appId': app_id}).encode(),
+                  headers={
+                      'Content-Type': 'application/json',
+                      'User-Agent': 'Mozilla/5.0',
+                  },
+                  method='POST',
+              )
+              with urllib.request.urlopen(token_req, timeout=30) as response:
+                  token_payload = json.load(response)
+              badger = token_payload.get('token')
+              if not badger:
+                  raise RuntimeError('Microsoft Badger token was empty')
+
+              encoded = base64.urlsafe_b64encode(shared_url.encode()).decode().rstrip('=')
+              api_url = (
+                  'https://my.microsoftpersonalcontent.com/_api/v2.0/shares/u!'
+                  + encoded
+                  + '/driveitem?$select=id,name,size,file,parentReference,@content.downloadUrl'
+              )
+              req = urllib.request.Request(
+                  api_url,
+                  headers={
+                      'Authorization': f'Badger {badger}',
+                      'Prefer': 'autoredeem',
+                      'Accept': 'application/json',
+                      'User-Agent': 'Mozilla/5.0',
+                  },
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  item = json.load(response)
+              download_url = item.get('@content.downloadUrl')
+              if not download_url:
+                  raise RuntimeError('OneDrive did not return @content.downloadUrl')
+              data, content_type, final_url = fetch_bytes(download_url)
+              save_and_validate(data, f'OneDrive resolver ({content_type})')
+              raise SystemExit(0)
+          except SystemExit:
+              raise
+          except Exception as exc:
+              errors.append(f'OneDrive resolver: {exc}')
+              print(f'Method 1 failed: {exc}')
+
+          # 2) Direct public-share download. Works when the share is configured
+          # as Anyone with the link and downloading is allowed.
+          try:
+              print('Download method 2: public share download=1')
               sep = '&' if '?' in shared_url else '?'
-              size = download(shared_url + sep + 'download=1')
-              print(f'Downloaded via public share: {size:,} bytes')
+              data, content_type, final_url = fetch_bytes(shared_url + sep + 'download=1')
+              save_and_validate(data, f'public share ({content_type})')
               raise SystemExit(0)
           except SystemExit:
               raise
           except Exception as exc:
               errors.append(f'public share: {exc}')
-              print(f'Method 1 failed: {exc}')
+              print(f'Method 2 failed: {exc}')
 
-          # Method 2: OneDrive anonymous shares API. The share URL is encoded
-          # as the standard u! base64url identifier; no user login is required
-          # for a public share.
+          # 3) Anonymous OneDrive shares API fallback.
           try:
-              print('Download method 2: OneDrive anonymous shares API')
+              print('Download method 3: OneDrive anonymous shares API')
               encoded = base64.urlsafe_b64encode(shared_url.encode()).decode().rstrip('=')
               api_url = 'https://api.onedrive.com/v1.0/shares/u!' + encoded + '/root/content'
-              size = download(api_url)
-              print(f'Downloaded via OneDrive shares API: {size:,} bytes')
+              data, content_type, final_url = fetch_bytes(api_url)
+              save_and_validate(data, f'OneDrive shares API ({content_type})')
               raise SystemExit(0)
           except SystemExit:
               raise
           except Exception as exc:
               errors.append(f'OneDrive shares API: {exc}')
-              print(f'Method 2 failed: {exc}')
+              print(f'Method 3 failed: {exc}')
 
-          # Method 3: Resolve the short 1drv.ms URL first, then request the
-          # resolved URL with download=1. This handles redirect changes.
+          # 4) Resolve 1drv.ms and retry the resolved URL with download=1.
           try:
-              print('Download method 3: resolve 1drv.ms redirect')
-              opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler())
-              req = urllib.request.Request(shared_url, headers={'User-Agent': 'Mozilla/5.0'})
-              with opener.open(req, timeout=60) as r:
-                  resolved = r.geturl()
+              print('Download method 4: resolve 1drv.ms redirect')
+              data, content_type, resolved = fetch_bytes(shared_url)
               parsed = urllib.parse.urlsplit(resolved)
               query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
               query['download'] = ['1']
-              resolved_download = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urllib.parse.urlencode(query, doseq=True), parsed.fragment))
-              size = download(resolved_download)
-              print(f'Downloaded via resolved OneDrive URL: {size:,} bytes')
+              resolved_download = urllib.parse.urlunsplit((
+                  parsed.scheme,
+                  parsed.netloc,
+                  parsed.path,
+                  urllib.parse.urlencode(query, doseq=True),
+                  parsed.fragment,
+              ))
+              data, content_type, final_url = fetch_bytes(resolved_download)
+              save_and_validate(data, f'resolved share ({content_type})')
               raise SystemExit(0)
           except SystemExit:
               raise
           except Exception as exc:
-              errors.append(f'resolved URL: {exc}')
-              print(f'Method 3 failed: {exc}')
+              errors.append(f'resolved share: {exc}')
+              print(f'Method 4 failed: {exc}')
 
           raise RuntimeError('All OneDrive download methods failed: ' + ' | '.join(errors))
           PY
