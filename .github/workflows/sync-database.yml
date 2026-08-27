@@ -9,8 +9,8 @@ on:
       - 'sync_database.py'
       - 'tools/sync_static.py'
   schedule:
-    # Every 3 hours. GitHub Actions cron is UTC.
-    - cron: '5 0,3,6,9,12,15,18,21 * * *'
+    # Every hour. GitHub Actions cron is UTC.
+    - cron: '5 * * * *'
 
 permissions:
   contents: write
@@ -85,7 +85,7 @@ jobs:
           if size < 1000:
               raise RuntimeError(f'Downloaded file is unexpectedly small: {size} bytes')
           with open(output, 'rb') as f:
-              if f.read(4) != b'PK\\x03\\x04':
+              if f.read(4) != b'PK\x03\x04':
                   raise RuntimeError('Downloaded file is not an XLSX/ZIP file.')
           print(f'Downloaded: {item.get("name", output)} ({size:,} bytes)')
           PY
