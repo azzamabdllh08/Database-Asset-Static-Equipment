@@ -9,18 +9,24 @@ on:
       - 'sync_database.py'
       - 'tools/sync_static.py'
   schedule:
-    # Every 3 hours at minute 17. GitHub Actions cron is UTC.
-    - cron: '17 0,3,6,9,12,15,18,21 * * *'
+    # Every 3 hours. GitHub Actions cron is UTC.
+    - cron: '5 0,3,6,9,12,15,18,21 * * *'
 
 permissions:
   contents: write
 
+env:
+  TZ: Asia/Jakarta
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Python
         uses: actions/setup-python@v5
@@ -35,7 +41,9 @@ jobs:
           SHARED_URL: 'https://1drv.ms/x/c/8dd2c5d0a467a39a/IQCp0TJlLQVoTbgVteIwn2fFAbSYv35ABYxVGW3GDX5d61c?e=aS7rws'
         run: |
           set -euo pipefail
-          python - <<'PY'
+          for attempt in 1 2 3; do
+            echo "OneDrive download attempt ${attempt}/3"
+            if python - <<'PY'
           import base64
           import json
           import os
@@ -77,10 +85,16 @@ jobs:
           if size < 1000:
               raise RuntimeError(f'Downloaded file is unexpectedly small: {size} bytes')
           with open(output, 'rb') as f:
-              if f.read(4) != b'PK\x03\x04':
+              if f.read(4) != b'PK\\x03\\x04':
                   raise RuntimeError('Downloaded file is not an XLSX/ZIP file.')
           print(f'Downloaded: {item.get("name", output)} ({size:,} bytes)')
           PY
+            then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 20
+          done
           ls -lh 'Input RBI.xlsx'
 
       - name: Generate Static Equipment database
@@ -105,12 +119,23 @@ jobs:
           print('generatedAt:', data.get('generatedAt'))
           PY
 
+      - name: Write sync heartbeat
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          Path('data/sync-heartbeat.txt').write_text(
+              datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z') + '\n',
+              encoding='utf-8'
+          )
+          PY
+
       - name: Commit updated database
         run: |
-          set -e
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.js data/manifest.json data/regions/*.json data/inspections.json
+          git add data.js data/manifest.json data/regions/*.json data/inspections.json data/sync-heartbeat.txt
           if git diff --cached --quiet; then
             echo "No database changes."
           else
