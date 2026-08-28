@@ -83,19 +83,13 @@ jobs:
 
           errors = []
 
-          # 1) Microsoft OneDrive share resolver. This is the preferred path
-          # for modern OneDrive share links because it asks Microsoft for the
-          # actual temporary content URL instead of scraping the share page.
           try:
               print('Download method 1: Microsoft OneDrive share resolver')
               app_id = '5cbed6ac-a083-4e14-b191-b4ba07653de2'
               token_req = urllib.request.Request(
                   'https://api-badgerp.svc.ms/v1.0/token',
                   data=json.dumps({'appId': app_id}).encode(),
-                  headers={
-                      'Content-Type': 'application/json',
-                      'User-Agent': 'Mozilla/5.0',
-                  },
+                  headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'},
                   method='POST',
               )
               with urllib.request.urlopen(token_req, timeout=30) as response:
@@ -103,22 +97,9 @@ jobs:
               badger = token_payload.get('token')
               if not badger:
                   raise RuntimeError('Microsoft Badger token was empty')
-
               encoded = base64.urlsafe_b64encode(shared_url.encode()).decode().rstrip('=')
-              api_url = (
-                  'https://my.microsoftpersonalcontent.com/_api/v2.0/shares/u!'
-                  + encoded
-                  + '/driveitem?$select=id,name,size,file,parentReference,@content.downloadUrl'
-              )
-              req = urllib.request.Request(
-                  api_url,
-                  headers={
-                      'Authorization': f'Badger {badger}',
-                      'Prefer': 'autoredeem',
-                      'Accept': 'application/json',
-                      'User-Agent': 'Mozilla/5.0',
-                  },
-              )
+              api_url = 'https://my.microsoftpersonalcontent.com/_api/v2.0/shares/u!' + encoded + '/driveitem?$select=id,name,size,file,parentReference,@content.downloadUrl'
+              req = urllib.request.Request(api_url, headers={'Authorization': f'Badger {badger}', 'Prefer': 'autoredeem', 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0'})
               with urllib.request.urlopen(req, timeout=30) as response:
                   item = json.load(response)
               download_url = item.get('@content.downloadUrl')
@@ -133,8 +114,6 @@ jobs:
               errors.append(f'OneDrive resolver: {exc}')
               print(f'Method 1 failed: {exc}')
 
-          # 2) Direct public-share download. Works when the share is configured
-          # as Anyone with the link and downloading is allowed.
           try:
               print('Download method 2: public share download=1')
               sep = '&' if '?' in shared_url else '?'
@@ -147,7 +126,6 @@ jobs:
               errors.append(f'public share: {exc}')
               print(f'Method 2 failed: {exc}')
 
-          # 3) Anonymous OneDrive shares API fallback.
           try:
               print('Download method 3: OneDrive anonymous shares API')
               encoded = base64.urlsafe_b64encode(shared_url.encode()).decode().rstrip('=')
@@ -161,20 +139,13 @@ jobs:
               errors.append(f'OneDrive shares API: {exc}')
               print(f'Method 3 failed: {exc}')
 
-          # 4) Resolve 1drv.ms and retry the resolved URL with download=1.
           try:
               print('Download method 4: resolve 1drv.ms redirect')
               data, content_type, resolved = fetch_bytes(shared_url)
               parsed = urllib.parse.urlsplit(resolved)
               query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
               query['download'] = ['1']
-              resolved_download = urllib.parse.urlunsplit((
-                  parsed.scheme,
-                  parsed.netloc,
-                  parsed.path,
-                  urllib.parse.urlencode(query, doseq=True),
-                  parsed.fragment,
-              ))
+              resolved_download = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urllib.parse.urlencode(query, doseq=True), parsed.fragment))
               data, content_type, final_url = fetch_bytes(resolved_download)
               save_and_validate(data, f'resolved share ({content_type})')
               raise SystemExit(0)
@@ -197,14 +168,17 @@ jobs:
           import json
           from pathlib import Path
           from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
 
           path = Path('data/manifest.json')
           data = json.loads(path.read_text(encoding='utf-8'))
           raw = str(data.get('generatedAt', '')).strip()
           if raw:
               dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+              # sync_static.py currently creates a naive timestamp while the
+              # runner TZ is Asia/Jakarta. Interpret naive values as WIB first.
               if dt.tzinfo is None:
-                  dt = dt.replace(tzinfo=timezone.utc)
+                  dt = dt.replace(tzinfo=ZoneInfo('Asia/Jakarta'))
               data['generatedAt'] = dt.astimezone(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
           path.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
           print('generatedAt:', data.get('generatedAt'))
@@ -215,10 +189,7 @@ jobs:
           python - <<'PY'
           from datetime import datetime, timezone
           from pathlib import Path
-          Path('data/sync-heartbeat.txt').write_text(
-              datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z') + '\n',
-              encoding='utf-8'
-          )
+          Path('data/sync-heartbeat.txt').write_text(datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z') + '\n', encoding='utf-8')
           PY
 
       - name: Commit updated database
